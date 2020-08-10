@@ -1,0 +1,4 @@
+# Bose PIDs
+# 40fe = SoundLink Color II, normal mode
+# 400d = SoundLink Color II, DFU mode
+SUBSYSTEM=="usb|hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="40fe|400d", TAG+="uaccess"
