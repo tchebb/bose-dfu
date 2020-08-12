@@ -15,11 +15,16 @@ const SUPPORTED_DFU_PIDS: &[u16] = &[
 #[derive(StructOpt, Debug)]
 #[structopt(name = "bose-dfu")]
 enum Opt {
+    /// List all connected Bose HID devices (vendor ID 0x05a7)
     List,
+
+    /// Put a device into DFU mode
     EnterDfu {
         #[structopt(flatten)]
         spec: DeviceSpec,
     },
+
+    /// Take a device out of DFU mode
     LeaveDfu {
         #[structopt(flatten)]
         spec: DeviceSpec,
