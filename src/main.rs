@@ -12,7 +12,7 @@ const SUPPORTED_DFU_PIDS: &[u16] = &[
     0x400d, // Bose Color II SoundLink
 ];
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Debug)]
 #[structopt(name = "bose-dfu")]
 enum Opt {
     List,
@@ -35,7 +35,7 @@ enum MatchError {
     MultipleDevices,
 }
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Debug)]
 struct DeviceSpec {
     /// Serial number
     #[structopt(short)]
