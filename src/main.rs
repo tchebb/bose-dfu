@@ -1,4 +1,6 @@
 use anyhow::Result;
+use std::convert::TryInto;
+use std::io::prelude::*;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -36,6 +38,14 @@ enum Opt {
     LeaveDfu {
         #[structopt(flatten)]
         spec: DeviceSpec,
+    },
+
+    /// Read the firmware of a device in DFU mode
+    Upload {
+        #[structopt(flatten)]
+        spec: DeviceSpec,
+
+        file: std::path::PathBuf,
     },
 }
 
@@ -134,6 +144,14 @@ fn main() -> Result<()> {
             };
             leave_dfu(&spec.get_device(&api)?)?;
         }
+        Opt::Upload { spec, file: path } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Dfu),
+                ..spec
+            };
+            let mut file = std::fs::File::create(path)?;
+            upload(&spec.get_device(&api)?, &mut file)?;
+        }
     };
 
     Ok(())
@@ -178,4 +196,24 @@ fn leave_dfu(device: &hidapi::HidDevice) -> Result<()> {
     device
         .send_feature_report(&[DfuReportType::State as u8, 0xff])
         .map_err(Into::into)
+}
+
+const FW_TRANSFER_SIZE: usize = 1022;
+const UPLOAD_HEADER_SIZE: usize = 5;
+
+fn upload(device: &hidapi::HidDevice, file: &mut std::fs::File) -> Result<()> {
+    let mut report = [0u8; FW_TRANSFER_SIZE + 1];
+    loop {
+        report[0] = DfuReportType::UploadDownload as u8;
+        device.get_feature_report(&mut report)?;
+        // TODO: Check status after every read
+        let data_size = u16::from_le_bytes(report[1..3].try_into()?) as usize;
+        let data_start = UPLOAD_HEADER_SIZE + 1;
+        file.write(&report[data_start..data_start + data_size])?;
+        if data_size != FW_TRANSFER_SIZE - UPLOAD_HEADER_SIZE {
+            break;
+        }
+    }
+    // TODO: Check status to ensure we're dfuIDLE.
+    Ok(())
 }
