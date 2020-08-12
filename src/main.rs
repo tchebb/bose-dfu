@@ -12,6 +12,14 @@ const SUPPORTED_DFU_PIDS: &[u16] = &[
     0x400d, // Bose Color II SoundLink
 ];
 
+fn get_mode(pid: u16) -> Option<DeviceMode> {
+    match pid {
+        v if SUPPORTED_NONDFU_PIDS.contains(&v) => Some(DeviceMode::Normal),
+        v if SUPPORTED_DFU_PIDS.contains(&v) => Some(DeviceMode::Dfu),
+        _ => None,
+    }
+}
+
 #[derive(StructOpt, Debug)]
 #[structopt(name = "bose-dfu")]
 enum Opt {
@@ -40,6 +48,12 @@ enum MatchError {
     MultipleDevices,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum DeviceMode {
+    Normal,
+    Dfu,
+}
+
 #[derive(StructOpt, Debug)]
 struct DeviceSpec {
     /// Serial number
@@ -49,6 +63,10 @@ struct DeviceSpec {
     /// Product ID (vendor ID is always matched against Bose's, 0x05a7)
     #[structopt(short)]
     pid: Option<u16>,
+
+    /// DFU/normal mode (determined using product ID for known devices)
+    #[structopt(skip)]
+    required_mode: Option<DeviceMode>,
 }
 
 impl DeviceSpec {
@@ -65,6 +83,13 @@ impl DeviceSpec {
 
         if let Some(x) = self.pid {
             if device.product_id() != x {
+                return false;
+            }
+        }
+
+        if let Some(mode) = self.required_mode {
+            // TODO: Handle unknown devices
+            if get_mode(device.product_id()) != Some(mode) {
                 return false;
             }
         }
@@ -95,8 +120,20 @@ fn main() -> Result<()> {
 
     match mode {
         Opt::List => list(&api),
-        Opt::EnterDfu { ref spec } => enter_dfu(&spec.get_device(&api)?)?,
-        Opt::LeaveDfu { ref spec } => leave_dfu(&spec.get_device(&api)?)?,
+        Opt::EnterDfu { spec } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Normal),
+                ..spec
+            };
+            enter_dfu(&spec.get_device(&api)?)?;
+        }
+        Opt::LeaveDfu { spec } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Dfu),
+                ..spec
+            };
+            leave_dfu(&spec.get_device(&api)?)?;
+        }
     };
 
     Ok(())
@@ -106,12 +143,13 @@ fn list(hidapi: &hidapi::HidApi) {
     let all_spec = DeviceSpec {
         serial: None,
         pid: None,
+        required_mode: None,
     };
     for dev in hidapi.device_list().filter(|d| all_spec.matches(d)) {
-        let support_status = match dev.product_id() {
-            v if SUPPORTED_NONDFU_PIDS.contains(&v) => "not in DFU mode, supported device",
-            v if SUPPORTED_DFU_PIDS.contains(&v) => "in DFU mode, supported device",
-            _ => "unsupported device, proceed at your own risk",
+        let support_status = match get_mode(dev.product_id()) {
+            Some(DeviceMode::Normal) => "not in DFU mode, known device",
+            Some(DeviceMode::Dfu) => "in DFU mode, known device",
+            None => "unknown device, proceed at your own risk",
         };
 
         println!(
