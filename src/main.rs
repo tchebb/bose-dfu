@@ -161,6 +161,13 @@ fn list(hidapi: &hidapi::HidApi) {
     }
 }
 
+#[repr(u8)]
+enum DfuReportType {
+    UploadDownload = 1,
+    GetStatus = 2,
+    State = 3,
+}
+
 fn enter_dfu(device: &hidapi::HidDevice) -> Result<()> {
     device
         .send_feature_report(&[1, 0xb0, 0x07])
@@ -168,5 +175,7 @@ fn enter_dfu(device: &hidapi::HidDevice) -> Result<()> {
 }
 
 fn leave_dfu(device: &hidapi::HidDevice) -> Result<()> {
-    device.send_feature_report(&[3, 0xff]).map_err(Into::into)
+    device
+        .send_feature_report(&[DfuReportType::State as u8, 0xff])
+        .map_err(Into::into)
 }
