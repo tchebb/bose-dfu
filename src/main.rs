@@ -127,7 +127,7 @@ impl DeviceSpec {
 fn main() -> Result<()> {
     let mode = Opt::from_args();
 
-    let api = hidapi::HidApi::new().expect("couldn't open HIDAPI");
+    let api = hidapi::HidApi::new()?;
 
     match mode {
         Opt::List => list(&api),
