@@ -45,6 +45,7 @@ enum Opt {
         #[structopt(flatten)]
         spec: DeviceSpec,
 
+        #[structopt(parse(from_os_str))]
         file: std::path::PathBuf,
     },
 }
