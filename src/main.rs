@@ -117,7 +117,7 @@ impl DeviceSpec {
                 if candidates.next().is_some() {
                     Err(MatchError::MultipleDevices.into())
                 } else {
-                    Ok(dev.open_device(hidapi)?)
+                    dev.open_device(hidapi).map_err(Into::into)
                 }
             }
         }
