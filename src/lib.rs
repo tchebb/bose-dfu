@@ -94,9 +94,9 @@ impl DfuState {
 
 #[derive(Debug, Copy, Clone)]
 pub struct DfuStatusResult {
-    status: DfuStatus,
-    state: DfuState,
-    poll_timeout: u32,
+    pub status: DfuStatus,
+    pub state: DfuState,
+    pub poll_timeout: u32,
 }
 
 impl DfuStatusResult {
@@ -121,7 +121,7 @@ impl DfuStatusResult {
         })
     }
 
-    fn ensure_ok(&self) -> Result<()> {
+    pub fn ensure_ok(&self) -> Result<()> {
         if self.status != DfuStatus::OK {
             Err(ProtocolError::ErrorStatus(self.status).into())
         } else {
@@ -129,7 +129,7 @@ impl DfuStatusResult {
         }
     }
 
-    fn ensure_state(&self, expected: DfuState) -> Result<()> {
+    pub fn ensure_state(&self, expected: DfuState) -> Result<()> {
         self.state.ensure(expected)
     }
 }
