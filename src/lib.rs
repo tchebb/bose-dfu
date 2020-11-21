@@ -184,7 +184,7 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut std::fs::File) -> Result<()
         file.write(&report[data_start..data_start + data_size])?;
 
         if data_size != FW_TRANSFER_SIZE - UPLOAD_HEADER_SIZE {
-            //  Short read means we're done, device should now be idle.
+            // Short read means we're done, device should now be idle.
             status.ensure_state(DfuState::dfuIDLE)?;
             break;
         } else {
