@@ -71,7 +71,7 @@ pub enum DfuState {
 impl DfuState {
     pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self> {
         let mut report = [0u8; 2];
-        report[0] = DfuReportType::State as u8;
+        report[0] = DfuReportType::StateCmd as u8;
         device
             .get_feature_report(&mut report)
             .context("failed to read state")?;
@@ -136,9 +136,39 @@ impl DfuStatusResult {
 
 #[repr(u8)]
 enum DfuReportType {
+    // Getting this descriptor executes DFU_UPLOAD, returning its payload
+    // appended to a five-byte header containing the 16-bit, little-endian
+    // payload length followed by three unknown bytes ([0x00, 0x00, 0x5d] in
+    // my tests).
+    // Setting it executes DFU_DNLOAD, taking request data consisting of the
+    // payload appended to a five-byte header containing (in order) the
+    // constant byte 0x01 (= DFU_DNLOAD); the 16-bit, little-endian block
+    // number; and the 16-bit, little-endian payload length.
     UploadDownload = 1,
+
+    // Getting this descriptor executes DFU_GETSTATUS and returns its payload.
+    // Setting it appears to always fail.
     GetStatus = 2,
-    State = 3,
+
+    // Getting this descriptor executes DFU_GETSTATE and returns its payload.
+    // Setting it executes a DFU request identified by the first byte of the
+    // request data. DFU_CLRSTATUS and DFU_ABORT can be executed this way, and
+    // possibly others.
+    StateCmd = 3,
+}
+
+#[repr(u8)]
+#[allow(non_camel_case_types)] // Names from DFU spec
+#[allow(dead_code)] // All entries from spec included for completeness
+enum DfuRequest {
+    DFU_DETACH = 0,
+    DFU_DNLOAD = 1,
+    DFU_UPLOAD = 2,
+    DFU_GETSTATUS = 3,
+    DFU_CLRSTATUS = 4,
+    DFU_GETSTATE = 5,
+    DFU_ABORT = 6,
+    BOSE_EXIT_DFU = 0xff, // Custom, not from DFU spec
 }
 
 #[derive(Error, Debug)]
@@ -161,14 +191,18 @@ pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<()> {
 
 pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<()> {
     device
-        .send_feature_report(&[DfuReportType::State as u8, 0xff])
+        .send_feature_report(&[
+            DfuReportType::StateCmd as u8,
+            DfuRequest::BOSE_EXIT_DFU as u8,
+        ])
         .map_err(Into::into)
 }
 
 const FW_TRANSFER_SIZE: usize = 1022;
-const UPLOAD_HEADER_SIZE: usize = 5;
 
 pub fn upload(device: &hidapi::HidDevice, file: &mut std::fs::File) -> Result<()> {
+    const UPLOAD_HEADER_SIZE: usize = 5;
+
     let mut report = [0u8; FW_TRANSFER_SIZE + 1];
 
     loop {
