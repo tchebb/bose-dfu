@@ -200,7 +200,7 @@ pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<()> {
 
 const FW_TRANSFER_SIZE: usize = 1022;
 
-pub fn upload(device: &hidapi::HidDevice, file: &mut std::fs::File) -> Result<()> {
+pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
     const UPLOAD_HEADER_SIZE: usize = 5;
 
     let mut report = [0u8; FW_TRANSFER_SIZE + 1];
