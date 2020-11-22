@@ -70,7 +70,7 @@ pub enum DfuState {
 
 impl DfuState {
     pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self> {
-        let mut report = [0u8; 2];
+        let mut report = [0u8; 1 + 1]; // 1 byte report type + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
         device
             .get_feature_report(&mut report)
@@ -101,7 +101,7 @@ pub struct DfuStatusResult {
 
 impl DfuStatusResult {
     pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self> {
-        let mut report = [0u8; 6];
+        let mut report = [0u8; 1 + 6]; // 1 byte report type + 6 bytes status
         report[0] = DfuReportType::GetStatus as u8;
         device
             .get_feature_report(&mut report)
@@ -185,7 +185,7 @@ enum ProtocolError {
 
 pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<()> {
     device
-        .send_feature_report(&[1, 0xb0, 0x07])
+        .send_feature_report(&[1, 0xb0, 0x07]) // Magic
         .map_err(Into::into)
 }
 
@@ -198,12 +198,13 @@ pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<()> {
         .map_err(Into::into)
 }
 
-const FW_TRANSFER_SIZE: usize = 1022;
+const XFER_HEADER_SIZE: usize = 5;
+// Gathered from USB captures, probably corresponds to a 1024-byte internal buffer in the firmware.
+const XFER_DATA_SIZE: usize = 1017;
 
 pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
-    const UPLOAD_HEADER_SIZE: usize = 5;
-
-    let mut report = [0u8; FW_TRANSFER_SIZE + 1];
+    // 1 byte report type + header + data
+    let mut report = [0u8; 1 + XFER_HEADER_SIZE + XFER_DATA_SIZE];
 
     loop {
         report[0] = DfuReportType::UploadDownload as u8;
@@ -214,10 +215,10 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
         status.ensure_ok()?;
 
         let data_size = LittleEndian::read_u16(&report[1..3]) as usize;
-        let data_start = UPLOAD_HEADER_SIZE + 1;
+        let data_start = XFER_HEADER_SIZE + 1;
         file.write(&report[data_start..data_start + data_size])?;
 
-        if data_size != FW_TRANSFER_SIZE - UPLOAD_HEADER_SIZE {
+        if data_size != XFER_DATA_SIZE {
             // Short read means we're done, device should now be idle.
             status.ensure_state(DfuState::dfuIDLE)?;
             break;
