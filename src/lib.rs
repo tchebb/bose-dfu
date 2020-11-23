@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
 use log::{info, trace};
 use num_enum::TryFromPrimitive;
 use std::convert::TryFrom;
-use std::io::Write;
+use std::io::{Read, Write};
+use std::thread::sleep;
+use std::time::Duration;
 use thiserror::Error;
 
 #[repr(u8)]
@@ -270,6 +272,64 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
         } else {
             status.ensure_state(DfuState::dfuUPLOAD_IDLE)?;
         }
+    }
+
+    Ok(())
+}
+
+pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> {
+    let mut report = vec![];
+
+    let mut block_num = 0u16;
+    loop {
+        report.clear();
+        // Reserve 1 byte report type + header to be filled later
+        report.resize(1 + XFER_HEADER_SIZE, 0u8);
+
+        let data_size = file.take(XFER_DATA_SIZE as _).read_to_end(&mut report)?;
+
+        let mut cursor = std::io::Cursor::new(&mut report);
+        cursor.write_u8(DfuReportType::UploadDownload as _).unwrap();
+        cursor.write_u8(DfuRequest::DFU_DNLOAD as _).unwrap();
+        cursor.write_u16::<LittleEndian>(block_num).unwrap();
+        cursor.write_u16::<LittleEndian>(data_size as u16).unwrap();
+        assert!(cursor.position() == (1 + XFER_HEADER_SIZE) as _); // Add 1 for report type
+
+        device
+            .send_feature_report(&mut report)
+            .context("failed to send firmware data chunk")?;
+        let mut status = DfuStatusResult::read_from_device(device)?;
+        status.ensure_ok()?;
+
+        trace!(
+            "Successfully downloaded block {:#06x} ({} bytes)",
+            block_num,
+            data_size
+        );
+
+        if data_size == 0 {
+            while status.state == DfuState::dfuMANIFEST {
+                sleep(Duration::from_millis(status.poll_timeout as _));
+                status = DfuStatusResult::read_from_device(device)?
+            }
+
+            // Empty read means we're done, device should now be idle.
+            status.ensure_state(DfuState::dfuIDLE)?;
+            break;
+        } else {
+            // My device (SoundLink Color II) never seems to trigger this loop,
+            // but I've left it for better compliance with the DFU spec.
+            while status.state == DfuState::dfuDNBUSY {
+                sleep(Duration::from_millis(status.poll_timeout as _));
+                status = DfuStatusResult::read_from_device(device)?
+            }
+            status.ensure_state(DfuState::dfuDNLOAD_IDLE)?;
+        }
+
+        block_num = match block_num.checked_add(1) {
+            Some(i) => i,
+            None => anyhow::bail!("input file too large, block_num overflowed"),
+        };
     }
 
     Ok(())
