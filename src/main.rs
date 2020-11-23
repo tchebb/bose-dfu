@@ -124,6 +124,13 @@ impl DeviceSpec {
 }
 
 fn main() -> Result<()> {
+    env_logger::Builder::from_env(
+        env_logger::Env::new()
+            .filter_or("BOSE_DFU_LOG", "info")
+            .write_style("BOSE_DFU_LOG_STYLE"),
+    )
+    .init();
+
     let mode = Opt::from_args();
 
     let api = hidapi::HidApi::new()?;

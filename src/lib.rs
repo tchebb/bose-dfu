@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use log::trace;
 use num_enum::TryFromPrimitive;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -216,6 +217,9 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
 
         let data_size = LittleEndian::read_u16(&report[1..3]) as usize;
         let data_start = XFER_HEADER_SIZE + 1;
+
+        trace!("Successfully uploaded block ({} bytes)", data_size);
+
         file.write(&report[data_start..data_start + data_size])?;
 
         if data_size != XFER_DATA_SIZE {
