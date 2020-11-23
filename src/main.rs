@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
-use bose_dfu::{enter_dfu, leave_dfu, upload, DfuState};
+use anyhow::Result;
+use bose_dfu::{ensure_idle, enter_dfu, leave_dfu, upload};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -158,11 +158,7 @@ fn main() -> Result<()> {
             };
 
             let device = &spec.get_device(&api)?;
-
-            let state = DfuState::read_from_device(device)?;
-            state
-                .ensure(DfuState::dfuIDLE)
-                .context("device not idle, please re-enter DFU mode")?;
+            ensure_idle(device)?;
 
             let mut file = std::fs::File::create(path)?;
             upload(device, &mut file)?;

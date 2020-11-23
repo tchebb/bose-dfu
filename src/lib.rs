@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use log::trace;
+use log::{info, trace};
 use num_enum::TryFromPrimitive;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -182,6 +182,47 @@ enum ProtocolError {
         expected: DfuState,
         actual: DfuState,
     },
+
+    #[error("don't know how to safely leave initial state {0:?}, please re-enter DFU mode")]
+    BadInitialState(DfuState),
+}
+
+pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<()> {
+    use DfuState::*;
+
+    let status = DfuStatusResult::read_from_device(device)?;
+    match status.state {
+        dfuIDLE => return Ok(()),
+        dfuDNLOAD_SYNC | dfuDNLOAD_IDLE | dfuMANIFEST_SYNC | dfuUPLOAD_IDLE => {
+            info!(
+                "Device not idle, state = {:?}; sending DFU_ABORT",
+                status.state
+            );
+
+            device.send_feature_report(&[
+                DfuReportType::StateCmd as u8,
+                DfuRequest::DFU_ABORT as u8,
+            ])?;
+        }
+        dfuERROR => {
+            info!(
+                "Device in error state, status = {:?} ({}); sending DFU_CLRSTATUS",
+                status.status,
+                status.status.error_str()
+            );
+
+            device.send_feature_report(&[
+                DfuReportType::StateCmd as u8,
+                DfuRequest::DFU_CLRSTATUS as u8,
+            ])?;
+        }
+        _ => return Err(ProtocolError::BadInitialState(status.state).into()),
+    };
+
+    // If we had to send a request, ensure it succeeded and we're now idle.
+    let status = DfuStatusResult::read_from_device(device)?;
+    status.ensure_ok()?;
+    status.ensure_state(dfuIDLE)
 }
 
 pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<()> {
