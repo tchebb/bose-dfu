@@ -281,6 +281,7 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> 
     let mut report = vec![];
 
     let mut block_num = 0u16;
+    let mut prev_delay = Duration::from_millis(0);
     loop {
         report.clear();
         // Reserve 1 byte report type + header to be filled later
@@ -298,8 +299,28 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> 
         device
             .send_feature_report(&mut report)
             .context("failed to send firmware data chunk")?;
-        let mut status = DfuStatusResult::read_from_device(device)?;
+
+        // This emulates the behavior of the official updater, as far as I can tell, but is not
+        // compliant with the DFU spec. If the device needs more time, it's supposed to respond
+        // to a status request here with a status of dfuDNLOAD_BUSY or dfuMANIFEST with
+        // bwPollTimeout set to the number of milliseconds it needs. However, my speaker (SoundLink
+        // Color II) appears to stop responding to requests immediately after receiving the last
+        // (empty) block without waiting for a status request. Instead, it communicates how long
+        // it needs in its *previous* status response (that is, its response to the last non-empty
+        // block). That's why we have to persist prev_delay across loop iterations.
+        //
+        // Notably, although the device does also set bwPollTimeout for non-final blocks, the
+        // official updater seems to completely ignore those values and instead just rely on the
+        // device to bake the necessary delay into its GET_STATUS response latency. We do the same.
+        if data_size == 0 {
+            info!("Waiting {:?}, as requested by device, for firmware to manifest", prev_delay);
+            sleep(prev_delay);
+        }
+
+        let status = DfuStatusResult::read_from_device(device)?;
         status.ensure_ok()?;
+
+        prev_delay = Duration::from_millis(status.poll_timeout as _);
 
         trace!(
             "Successfully downloaded block {:#06x} ({} bytes)",
@@ -308,21 +329,10 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> 
         );
 
         if data_size == 0 {
-            while status.state == DfuState::dfuMANIFEST {
-                sleep(Duration::from_millis(status.poll_timeout as _));
-                status = DfuStatusResult::read_from_device(device)?
-            }
-
             // Empty read means we're done, device should now be idle.
             status.ensure_state(DfuState::dfuIDLE)?;
             break;
         } else {
-            // My device (SoundLink Color II) never seems to trigger this loop,
-            // but I've left it for better compliance with the DFU spec.
-            while status.state == DfuState::dfuDNBUSY {
-                sleep(Duration::from_millis(status.poll_timeout as _));
-                status = DfuStatusResult::read_from_device(device)?
-            }
             status.ensure_state(DfuState::dfuDNLOAD_IDLE)?;
         }
 
