@@ -187,6 +187,9 @@ enum ProtocolError {
 
     #[error("don't know how to safely leave initial state {0:?}, please re-enter DFU mode")]
     BadInitialState(DfuState),
+
+    #[error("file too large: overflowed 16-bit block number while sending")]
+    FileTooLarge,
 }
 
 pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<()> {
@@ -338,7 +341,7 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> 
 
         block_num = match block_num.checked_add(1) {
             Some(i) => i,
-            None => anyhow::bail!("input file too large, block_num overflowed"),
+            None => return Err(ProtocolError::FileTooLarge.into()),
         };
     }
 
