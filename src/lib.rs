@@ -175,6 +175,7 @@ enum DfuRequest {
 }
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 enum ProtocolError {
     #[error("device reported an error: {0:?} ({})", .0.error_str())]
     ErrorStatus(DfuStatus),
