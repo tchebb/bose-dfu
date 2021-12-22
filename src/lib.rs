@@ -317,7 +317,10 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> 
         // official updater seems to completely ignore those values and instead just rely on the
         // device to bake the necessary delay into its GET_STATUS response latency. We do the same.
         if data_size == 0 {
-            info!("Waiting {:?}, as requested by device, for firmware to manifest", prev_delay);
+            info!(
+                "Waiting {:?}, as requested by device, for firmware to manifest",
+                prev_delay
+            );
             sleep(prev_delay);
         }
 
