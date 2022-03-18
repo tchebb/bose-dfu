@@ -90,8 +90,7 @@ impl DfuState {
             Err(ProtocolError::UnexpectedState {
                 expected,
                 actual: self,
-            }
-            .into())
+            })
         } else {
             Ok(())
         }
@@ -134,7 +133,7 @@ impl DfuStatusResult {
 
     pub fn ensure_ok(&self) -> Result<(), ProtocolError> {
         if self.status != DfuStatus::OK {
-            Err(ProtocolError::ErrorStatus(self.status).into())
+            Err(ProtocolError::ErrorStatus(self.status))
         } else {
             Ok(())
         }
@@ -353,7 +352,7 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), 
         assert!(cursor.position() == (1 + XFER_HEADER_SIZE) as _); // Add 1 for report type
 
         device
-            .send_feature_report(&mut report)
+            .send_feature_report(&report)
             .map_err(|e| Error::DeviceIoError {
                 source: e,
                 action: "sending firmware data chunk",

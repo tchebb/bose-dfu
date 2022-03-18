@@ -86,7 +86,7 @@ impl DeviceSpec {
         }
 
         if let Some(ref x) = self.serial {
-            if device.serial_number() != Some(&x) {
+            if device.serial_number() != Some(x) {
                 return false;
             }
         }
@@ -104,7 +104,7 @@ impl DeviceSpec {
             }
         }
 
-        return true;
+        true
     }
 
     fn get_device(&self, hidapi: &hidapi::HidApi) -> Result<hidapi::HidDevice> {
