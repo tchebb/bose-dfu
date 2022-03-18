@@ -72,6 +72,7 @@ pub enum DfuState {
 }
 
 impl DfuState {
+    #[allow(dead_code)]
     fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 1]; // 1 byte report type + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
