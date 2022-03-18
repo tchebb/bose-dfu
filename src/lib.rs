@@ -319,7 +319,7 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), E
 
         trace!("Successfully uploaded block ({} bytes)", data_size);
 
-        file.write(&report[data_start..data_start + data_size])?;
+        file.write_all(&report[data_start..data_start + data_size])?;
 
         if data_size != XFER_DATA_SIZE {
             // Short read means we're done, device should now be idle.
