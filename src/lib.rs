@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
+use hidapi::HidError;
 use log::{info, trace};
 use num_enum::TryFromPrimitive;
 use std::convert::TryFrom;
@@ -72,17 +72,20 @@ pub enum DfuState {
 }
 
 impl DfuState {
-    pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self> {
+    pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 1]; // 1 byte report type + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
         device
             .get_feature_report(&mut report)
-            .context("failed to read state")?;
+            .map_err(|e| Error::DeviceIoError {
+                source: e,
+                action: "querying state",
+            })?;
 
-        Self::try_from(report[1]).map_err(Into::into)
+        Self::try_from(report[1]).map_err(|e| ProtocolError::UnknownState(e.number).into())
     }
 
-    pub fn ensure(self, expected: Self) -> Result<()> {
+    pub fn ensure(self, expected: Self) -> Result<(), ProtocolError> {
         if self != expected {
             Err(ProtocolError::UnexpectedState {
                 expected,
@@ -103,19 +106,24 @@ pub struct DfuStatusResult {
 }
 
 impl DfuStatusResult {
-    pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self> {
+    pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 6]; // 1 byte report type + 6 bytes status
         report[0] = DfuReportType::GetStatus as u8;
         device
             .get_feature_report(&mut report)
-            .context("failed to read status")?;
+            .map_err(|e| Error::DeviceIoError {
+                source: e,
+                action: "querying status",
+            })?;
 
         let mut cursor = std::io::Cursor::new(report);
         cursor.set_position(1); // Skip report number
 
-        let status = DfuStatus::try_from(cursor.read_u8().unwrap())?;
+        let status = DfuStatus::try_from(cursor.read_u8().unwrap())
+            .map_err(|e| ProtocolError::UnknownState(e.number))?;
         let poll_timeout = cursor.read_u24::<LittleEndian>().unwrap();
-        let state = DfuState::try_from(cursor.read_u8().unwrap())?;
+        let state = DfuState::try_from(cursor.read_u8().unwrap())
+            .map_err(|e| ProtocolError::UnknownStatus(e.number))?;
 
         Ok(Self {
             status,
@@ -124,7 +132,7 @@ impl DfuStatusResult {
         })
     }
 
-    pub fn ensure_ok(&self) -> Result<()> {
+    pub fn ensure_ok(&self) -> Result<(), ProtocolError> {
         if self.status != DfuStatus::OK {
             Err(ProtocolError::ErrorStatus(self.status).into())
         } else {
@@ -132,7 +140,7 @@ impl DfuStatusResult {
         }
     }
 
-    pub fn ensure_state(&self, expected: DfuState) -> Result<()> {
+    pub fn ensure_state(&self, expected: DfuState) -> Result<(), ProtocolError> {
         self.state.ensure(expected)
     }
 }
@@ -176,7 +184,13 @@ enum DfuRequest {
 
 #[derive(Error, Debug)]
 #[non_exhaustive]
-enum ProtocolError {
+pub enum ProtocolError {
+    #[error("device reported state ({0}) which is not in the DFU spec")]
+    UnknownState(u8),
+
+    #[error("device reported status ({0}) which is not in the DFU spec")]
+    UnknownStatus(u8),
+
     #[error("device reported an error: {0:?} ({})", .0.error_str())]
     ErrorStatus(DfuStatus),
 
@@ -193,7 +207,29 @@ enum ProtocolError {
     FileTooLarge,
 }
 
-pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<()> {
+#[derive(Error, Debug)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("DFU protocol error")]
+    ProtocolError {
+        #[from]
+        source: ProtocolError,
+    },
+
+    #[error("USB transaction error while {action}")]
+    DeviceIoError {
+        source: HidError,
+        action: &'static str,
+    },
+
+    #[error("File I/O error")]
+    FileIoError {
+        #[from]
+        source: std::io::Error,
+    },
+}
+
+pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<(), Error> {
     use DfuState::*;
 
     let status = DfuStatusResult::read_from_device(device)?;
@@ -205,10 +241,12 @@ pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<()> {
                 status.state
             );
 
-            device.send_feature_report(&[
-                DfuReportType::StateCmd as u8,
-                DfuRequest::DFU_ABORT as u8,
-            ])?;
+            device
+                .send_feature_report(&[DfuReportType::StateCmd as u8, DfuRequest::DFU_ABORT as u8])
+                .map_err(|e| Error::DeviceIoError {
+                    source: e,
+                    action: "sending DFU_ABORT",
+                })?;
         }
         dfuERROR => {
             info!(
@@ -217,10 +255,15 @@ pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<()> {
                 status.status.error_str()
             );
 
-            device.send_feature_report(&[
-                DfuReportType::StateCmd as u8,
-                DfuRequest::DFU_CLRSTATUS as u8,
-            ])?;
+            device
+                .send_feature_report(&[
+                    DfuReportType::StateCmd as u8,
+                    DfuRequest::DFU_CLRSTATUS as u8,
+                ])
+                .map_err(|e| Error::DeviceIoError {
+                    source: e,
+                    action: "sending DFU_CLRSTATUS",
+                })?;
         }
         _ => return Err(ProtocolError::BadInitialState(status.state).into()),
     };
@@ -228,29 +271,35 @@ pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<()> {
     // If we had to send a request, ensure it succeeded and we're now idle.
     let status = DfuStatusResult::read_from_device(device)?;
     status.ensure_ok()?;
-    status.ensure_state(dfuIDLE)
+    status.ensure_state(dfuIDLE).map_err(Into::into)
 }
 
-pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<()> {
+pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
     device
         .send_feature_report(&[1, 0xb0, 0x07]) // Magic
-        .map_err(Into::into)
+        .map_err(|e| Error::DeviceIoError {
+            source: e,
+            action: "entering DFU mode",
+        })
 }
 
-pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<()> {
+pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
     device
         .send_feature_report(&[
             DfuReportType::StateCmd as u8,
             DfuRequest::BOSE_EXIT_DFU as u8,
         ])
-        .map_err(Into::into)
+        .map_err(|e| Error::DeviceIoError {
+            source: e,
+            action: "leaving DFU mode",
+        })
 }
 
 const XFER_HEADER_SIZE: usize = 5;
 // Gathered from USB captures, probably corresponds to a 1024-byte internal buffer in the firmware.
 const XFER_DATA_SIZE: usize = 1017;
 
-pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
+pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), Error> {
     // 1 byte report type + header + data
     let mut report = [0u8; 1 + XFER_HEADER_SIZE + XFER_DATA_SIZE];
 
@@ -258,7 +307,10 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
         report[0] = DfuReportType::UploadDownload as u8;
         device
             .get_feature_report(&mut report)
-            .context("failed to read firmware data chunk")?;
+            .map_err(|e| Error::DeviceIoError {
+                source: e,
+                action: "reading firmware data chunk",
+            })?;
         let status = DfuStatusResult::read_from_device(device)?;
         status.ensure_ok()?;
 
@@ -281,7 +333,7 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<()> {
     Ok(())
 }
 
-pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> {
+pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), Error> {
     let mut report = vec![];
 
     let mut block_num = 0u16;
@@ -302,7 +354,10 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<()> 
 
         device
             .send_feature_report(&mut report)
-            .context("failed to send firmware data chunk")?;
+            .map_err(|e| Error::DeviceIoError {
+                source: e,
+                action: "sending firmware data chunk",
+            })?;
 
         // This emulates the behavior of the official updater, as far as I can tell, but is not
         // compliant with the DFU spec. If the device needs more time, it's supposed to respond
