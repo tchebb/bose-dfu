@@ -72,7 +72,7 @@ pub enum DfuState {
 }
 
 impl DfuState {
-    pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
+    fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 1]; // 1 byte report type + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
         device
@@ -85,7 +85,7 @@ impl DfuState {
         Self::try_from(report[1]).map_err(|e| ProtocolError::UnknownState(e.number).into())
     }
 
-    pub fn ensure(self, expected: Self) -> Result<(), ProtocolError> {
+    fn ensure(self, expected: Self) -> Result<(), ProtocolError> {
         if self != expected {
             Err(ProtocolError::UnexpectedState {
                 expected,
@@ -98,14 +98,14 @@ impl DfuState {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct DfuStatusResult {
+struct DfuStatusResult {
     pub status: DfuStatus,
     pub state: DfuState,
     pub poll_timeout: u32,
 }
 
 impl DfuStatusResult {
-    pub fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
+    fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 6]; // 1 byte report type + 6 bytes status
         report[0] = DfuReportType::GetStatus as u8;
         device
@@ -131,7 +131,7 @@ impl DfuStatusResult {
         })
     }
 
-    pub fn ensure_ok(&self) -> Result<(), ProtocolError> {
+    fn ensure_ok(&self) -> Result<(), ProtocolError> {
         if self.status != DfuStatus::OK {
             Err(ProtocolError::ErrorStatus(self.status))
         } else {
@@ -139,7 +139,7 @@ impl DfuStatusResult {
         }
     }
 
-    pub fn ensure_state(&self, expected: DfuState) -> Result<(), ProtocolError> {
+    fn ensure_state(&self, expected: DfuState) -> Result<(), ProtocolError> {
         self.state.ensure(expected)
     }
 }
