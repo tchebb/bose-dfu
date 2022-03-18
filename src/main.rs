@@ -5,18 +5,18 @@ use thiserror::Error;
 
 const BOSE_VID: u16 = 0x05a7;
 
-const SUPPORTED_NONDFU_PIDS: &[u16] = &[
+const TESTED_NONDFU_PIDS: &[u16] = &[
     0x40fe, // Bose Color II SoundLink
 ];
 
-const SUPPORTED_DFU_PIDS: &[u16] = &[
+const TESTED_DFU_PIDS: &[u16] = &[
     0x400d, // Bose Color II SoundLink
 ];
 
 fn get_mode(pid: u16) -> Option<DeviceMode> {
     match pid {
-        v if SUPPORTED_NONDFU_PIDS.contains(&v) => Some(DeviceMode::Normal),
-        v if SUPPORTED_DFU_PIDS.contains(&v) => Some(DeviceMode::Dfu),
+        v if TESTED_NONDFU_PIDS.contains(&v) => Some(DeviceMode::Normal),
+        v if TESTED_DFU_PIDS.contains(&v) => Some(DeviceMode::Dfu),
         _ => None,
     }
 }
