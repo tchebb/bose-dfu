@@ -114,7 +114,7 @@ impl DeviceSpec {
         true
     }
 
-    fn get_device(&self, hidapi: &HidApi) -> Result<HidDevice> {
+    fn get_device<'a>(&self, hidapi: &'a HidApi) -> Result<(HidDevice, &'a DeviceInfo)> {
         let mut candidates = hidapi.device_list().filter(|d| self.matches(d));
 
         match candidates.next() {
@@ -123,7 +123,9 @@ impl DeviceSpec {
                 if candidates.next().is_some() {
                     Err(MatchError::MultipleDevices.into())
                 } else {
-                    dev.open_device(hidapi).map_err(Into::into)
+                    dev.open_device(hidapi)
+                        .map_err(Into::into)
+                        .map(|open| (open, dev))
                 }
             }
         }
@@ -149,14 +151,10 @@ fn main() -> Result<()> {
                 required_mode: Some(DeviceMode::Normal),
                 ..spec
             };
-            let dev = &spec.get_device(&api)?;
+            let (dev, info) = &spec.get_device(&api)?;
 
             use bose_dfu::InfoField::*;
-            println!(
-                "USB serial: {}",
-                dev.get_serial_number_string()?
-                    .unwrap_or_else(|| "INVALID".to_owned())
-            );
+            println!("USB serial: {}", info.serial_number().unwrap_or("INVALID"));
             println!("HW serial: {}", read_info_field(dev, SerialNumber)?);
             println!("Device model: {}", read_info_field(dev, DeviceModel)?);
             println!(
@@ -169,14 +167,14 @@ fn main() -> Result<()> {
                 required_mode: Some(DeviceMode::Normal),
                 ..spec
             };
-            enter_dfu(&spec.get_device(&api)?)?;
+            enter_dfu(&spec.get_device(&api)?.0)?;
         }
         Opt::LeaveDfu { spec } => {
             let spec = DeviceSpec {
                 required_mode: Some(DeviceMode::Dfu),
                 ..spec
             };
-            leave_dfu(&spec.get_device(&api)?)?;
+            leave_dfu(&spec.get_device(&api)?.0)?;
         }
         Opt::Upload { spec, file: path } => {
             let spec = DeviceSpec {
@@ -184,11 +182,11 @@ fn main() -> Result<()> {
                 ..spec
             };
 
-            let device = &spec.get_device(&api)?;
-            ensure_idle(device)?;
+            let (dev, _) = &spec.get_device(&api)?;
+            ensure_idle(dev)?;
 
             let mut file = std::fs::File::create(path)?;
-            upload(device, &mut file)?;
+            upload(dev, &mut file)?;
         }
     };
 
