@@ -8,6 +8,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use thiserror::Error;
 
+/// Status codes a DFU device can return, taken from the USB DFU 1.1 spec.
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)] // Names from DFU spec
@@ -54,6 +55,7 @@ impl DfuStatus {
     }
 }
 
+/// States a DFU device can be in, taken from the USB DFU 1.1 spec.
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)] // Names from DFU spec
@@ -182,6 +184,7 @@ enum DfuRequest {
     BOSE_EXIT_DFU = 0xff, // Custom, not from DFU spec
 }
 
+/// Failure modes that can happen even when all I/O succeeds.
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum ProtocolError {
@@ -207,6 +210,7 @@ pub enum ProtocolError {
     FileTooLarge,
 }
 
+/// All errors (protocol and I/O) that can happen during a DFU operation.
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum Error {
@@ -223,6 +227,8 @@ pub enum Error {
     FileIoError(#[from] std::io::Error),
 }
 
+/// Attempt to transition the device to the [dfuIDLE](DfuState::dfuIDLE) state. If we can't or
+/// don't know how to, return an error. `device` must be in DFU mode.
 pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<(), Error> {
     use DfuState::*;
 
@@ -268,6 +274,7 @@ pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<(), Error> {
     status.ensure_state(dfuIDLE).map_err(Into::into)
 }
 
+/// Put a device running the normal firmware into DFU mode. `device` must NOT be in DFU mode.
 pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
     device
         .send_feature_report(&[1, 0xb0, 0x07]) // Magic
@@ -277,6 +284,7 @@ pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
         })
 }
 
+/// Switch back to the normal firmware. `device` must be in DFU mode.
 pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
     device
         .send_feature_report(&[
@@ -293,6 +301,8 @@ const XFER_HEADER_SIZE: usize = 5;
 // Gathered from USB captures, probably corresponds to a 1024-byte internal buffer in the firmware.
 const XFER_DATA_SIZE: usize = 1017;
 
+/// Upload (i.e. read firmware from) the device. `device` must be in DFU mode. No processing is
+/// done on the data written to `file` (for example, a DFU suffix is not added).
 pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), Error> {
     // 1 byte report ID + header + data
     let mut report = [0u8; 1 + XFER_HEADER_SIZE + XFER_DATA_SIZE];
@@ -327,6 +337,8 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), E
     Ok(())
 }
 
+/// Download (i.e. write firmware to) the device. `device` must be in DFU mode. `file` should
+/// contain only the firmware payload to be written, with any DFU header stripped off.
 pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), Error> {
     let mut report = vec![];
 
