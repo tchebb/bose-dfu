@@ -1,5 +1,6 @@
 use anyhow::Result;
 use bose_dfu::{ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
+use hidapi::{DeviceInfo, HidApi, HidDevice};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -86,7 +87,7 @@ struct DeviceSpec {
 }
 
 impl DeviceSpec {
-    fn matches(&self, device: &hidapi::DeviceInfo) -> bool {
+    fn matches(&self, device: &DeviceInfo) -> bool {
         if device.vendor_id() != BOSE_VID {
             return false;
         }
@@ -113,7 +114,7 @@ impl DeviceSpec {
         true
     }
 
-    fn get_device(&self, hidapi: &hidapi::HidApi) -> Result<hidapi::HidDevice> {
+    fn get_device(&self, hidapi: &HidApi) -> Result<HidDevice> {
         let mut candidates = hidapi.device_list().filter(|d| self.matches(d));
 
         match candidates.next() {
@@ -139,7 +140,7 @@ fn main() -> Result<()> {
 
     let mode = Opt::from_args();
 
-    let api = hidapi::HidApi::new()?;
+    let api = HidApi::new()?;
 
     match mode {
         Opt::List => list(&api),
@@ -194,7 +195,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn list(hidapi: &hidapi::HidApi) {
+fn list(hidapi: &HidApi) {
     let all_spec = DeviceSpec {
         serial: None,
         pid: None,

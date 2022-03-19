@@ -1,5 +1,5 @@
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
-use hidapi::HidError;
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt, LE};
+use hidapi::{HidDevice, HidError};
 use log::{info, trace};
 use num_enum::TryFromPrimitive;
 use std::convert::TryFrom;
@@ -75,7 +75,7 @@ pub enum DfuState {
 
 impl DfuState {
     #[allow(dead_code)]
-    fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
+    fn read_from_device(device: &HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 1]; // 1 byte report ID + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
         device
@@ -108,7 +108,7 @@ struct DfuStatusResult {
 }
 
 impl DfuStatusResult {
-    fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
+    fn read_from_device(device: &HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 6]; // 1 byte report ID + 6 bytes status
         report[0] = DfuReportType::GetStatus as u8;
         device
@@ -123,7 +123,7 @@ impl DfuStatusResult {
 
         let status = DfuStatus::try_from(cursor.read_u8().unwrap())
             .map_err(|e| ProtocolError::UnknownState(e.number))?;
-        let poll_timeout = cursor.read_u24::<LittleEndian>().unwrap();
+        let poll_timeout = cursor.read_u24::<LE>().unwrap();
         let state = DfuState::try_from(cursor.read_u8().unwrap())
             .map_err(|e| ProtocolError::UnknownStatus(e.number))?;
 
@@ -232,7 +232,7 @@ pub enum Error {
 
 /// Attempt to transition the device to the [dfuIDLE](DfuState::dfuIDLE) state. If we can't or
 /// don't know how to, return an error. `device` must be in DFU mode.
-pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<(), Error> {
+pub fn ensure_idle(device: &HidDevice) -> Result<(), Error> {
     use DfuState::*;
 
     let status = DfuStatusResult::read_from_device(device)?;
@@ -287,7 +287,7 @@ pub enum InfoField {
 
 /// Read an information field (as listed in [InfoField]) from the normal firmware. `device` must
 /// NOT be in DFU mode.
-pub fn read_info_field(device: &hidapi::HidDevice, field: InfoField) -> Result<String, Error> {
+pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, Error> {
     const INFO_REPORT_ID: u8 = 2;
     const INFO_REPORT_LEN: usize = 126;
 
@@ -331,7 +331,7 @@ pub fn read_info_field(device: &hidapi::HidDevice, field: InfoField) -> Result<S
 }
 
 /// Put a device running the normal firmware into DFU mode. `device` must NOT be in DFU mode.
-pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
+pub fn enter_dfu(device: &HidDevice) -> Result<(), Error> {
     device
         .send_feature_report(&[1, 0xb0, 0x07]) // Magic
         .map_err(|e| Error::DeviceIoError {
@@ -341,7 +341,7 @@ pub fn enter_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
 }
 
 /// Switch back to the normal firmware. `device` must be in DFU mode.
-pub fn leave_dfu(device: &hidapi::HidDevice) -> Result<(), Error> {
+pub fn leave_dfu(device: &HidDevice) -> Result<(), Error> {
     device
         .send_feature_report(&[
             DfuReportType::StateCmd as u8,
@@ -359,7 +359,7 @@ const XFER_DATA_SIZE: usize = 1017;
 
 /// Upload (i.e. read firmware from) the device. `device` must be in DFU mode. No processing is
 /// done on the data written to `file` (for example, a DFU suffix is not added).
-pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), Error> {
+pub fn upload(device: &HidDevice, file: &mut impl Write) -> Result<(), Error> {
     // 1 byte report ID + header + data
     let mut report = [0u8; 1 + XFER_HEADER_SIZE + XFER_DATA_SIZE];
 
@@ -374,7 +374,7 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), E
         let status = DfuStatusResult::read_from_device(device)?;
         status.ensure_ok()?;
 
-        let data_size = LittleEndian::read_u16(&report[1..3]) as usize;
+        let data_size = LE::read_u16(&report[1..3]) as usize;
         let data_start = XFER_HEADER_SIZE + 1;
 
         trace!("Successfully uploaded block ({} bytes)", data_size);
@@ -395,7 +395,7 @@ pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), E
 
 /// Download (i.e. write firmware to) the device. `device` must be in DFU mode. `file` should
 /// contain only the firmware payload to be written, with any DFU header stripped off.
-pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), Error> {
+pub fn download(device: &HidDevice, file: &mut impl Read) -> Result<(), Error> {
     let mut report = vec![];
 
     let mut block_num = 0u16;
@@ -410,8 +410,8 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), 
         let mut cursor = std::io::Cursor::new(&mut report);
         cursor.write_u8(DfuReportType::UploadDownload as _).unwrap();
         cursor.write_u8(DfuRequest::DFU_DNLOAD as _).unwrap();
-        cursor.write_u16::<LittleEndian>(block_num).unwrap();
-        cursor.write_u16::<LittleEndian>(data_size as u16).unwrap();
+        cursor.write_u16::<LE>(block_num).unwrap();
+        cursor.write_u16::<LE>(data_size as u16).unwrap();
         assert!(cursor.position() == (1 + XFER_HEADER_SIZE) as _); // Add 1 for report ID
 
         device
