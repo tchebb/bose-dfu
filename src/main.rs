@@ -151,8 +151,13 @@ fn main() -> Result<()> {
             let dev = &spec.get_device(&api)?;
 
             use bose_dfu::InfoField::*;
+            println!(
+                "USB serial: {}",
+                dev.get_serial_number_string()?
+                    .unwrap_or_else(|| "INVALID".to_owned())
+            );
+            println!("HW serial: {}", read_info_field(dev, SerialNumber)?);
             println!("Device model: {}", read_info_field(dev, DeviceModel)?);
-            println!("Serial: {}", read_info_field(dev, SerialNumber)?);
             println!(
                 "Current firmware: {}",
                 read_info_field(dev, CurrentFirmware)?
