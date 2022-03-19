@@ -41,12 +41,13 @@ Directly from Bose
 ------------------
 Bose hosts the latest firmware (and possibly earlier ones, too) for each device
 at https://downloads.bose.com/.  Although directory listings are not enabled on
-that server, you can find the latest firmware for your device by accessing
-`index.xml` under the subdirectory matching your device's codename. For my
-SoundLink Color II (codename "foreman"), for example, I can fetch
-https://downloads.bose.com/ced/foreman/index.xml and look for the latest
-firmware filename in its `<IMAGE>` element. I can then download that file,
-which lives in the same directory as `index.xml`.
+that server, you can get a listing of all supported devices by fetching
+https://downloads.bose.com/lookup.xml. Each `<PRODUCT>` element in that file
+holds the USB PID of the corresponding device when it's in DFU mode (i.e. after
+running bose-dfu's `enter-dfu` subcommand) as well as a URL to an `index.xml`
+for the device. Each `index.xml` holds the filename of that device's latest
+firmware in its `<IMAGE>` element. The firmware files are hosted in the same
+per-device subdirectories that hold the `index.xml` files.
 
 Via unofficial archive
 ----------------------
