@@ -74,7 +74,7 @@ pub enum DfuState {
 impl DfuState {
     #[allow(dead_code)]
     fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
-        let mut report = [0u8; 1 + 1]; // 1 byte report type + 1 byte state
+        let mut report = [0u8; 1 + 1]; // 1 byte report ID + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
         device
             .get_feature_report(&mut report)
@@ -107,7 +107,7 @@ struct DfuStatusResult {
 
 impl DfuStatusResult {
     fn read_from_device(device: &hidapi::HidDevice) -> Result<Self, Error> {
-        let mut report = [0u8; 1 + 6]; // 1 byte report type + 6 bytes status
+        let mut report = [0u8; 1 + 6]; // 1 byte report ID + 6 bytes status
         report[0] = DfuReportType::GetStatus as u8;
         device
             .get_feature_report(&mut report)
@@ -300,7 +300,7 @@ const XFER_HEADER_SIZE: usize = 5;
 const XFER_DATA_SIZE: usize = 1017;
 
 pub fn upload(device: &hidapi::HidDevice, file: &mut impl Write) -> Result<(), Error> {
-    // 1 byte report type + header + data
+    // 1 byte report ID + header + data
     let mut report = [0u8; 1 + XFER_HEADER_SIZE + XFER_DATA_SIZE];
 
     loop {
@@ -340,7 +340,7 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), 
     let mut prev_delay = Duration::from_millis(0);
     loop {
         report.clear();
-        // Reserve 1 byte report type + header to be filled later
+        // Reserve 1 byte report ID + header to be filled later
         report.resize(1 + XFER_HEADER_SIZE, 0u8);
 
         let data_size = file.take(XFER_DATA_SIZE as _).read_to_end(&mut report)?;
@@ -350,7 +350,7 @@ pub fn download(device: &hidapi::HidDevice, file: &mut impl Read) -> Result<(), 
         cursor.write_u8(DfuRequest::DFU_DNLOAD as _).unwrap();
         cursor.write_u16::<LittleEndian>(block_num).unwrap();
         cursor.write_u16::<LittleEndian>(data_size as u16).unwrap();
-        assert!(cursor.position() == (1 + XFER_HEADER_SIZE) as _); // Add 1 for report type
+        assert!(cursor.position() == (1 + XFER_HEADER_SIZE) as _); // Add 1 for report ID
 
         device
             .send_feature_report(&report)
