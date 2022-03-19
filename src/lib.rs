@@ -211,10 +211,7 @@ pub enum ProtocolError {
 #[non_exhaustive]
 pub enum Error {
     #[error("DFU protocol error")]
-    ProtocolError {
-        #[from]
-        source: ProtocolError,
-    },
+    ProtocolError(#[from] ProtocolError),
 
     #[error("USB transaction error while {action}")]
     DeviceIoError {
@@ -223,10 +220,7 @@ pub enum Error {
     },
 
     #[error("File I/O error")]
-    FileIoError {
-        #[from]
-        source: std::io::Error,
-    },
+    FileIoError(#[from] std::io::Error),
 }
 
 pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<(), Error> {
