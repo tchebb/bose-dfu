@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bose_dfu::{ensure_idle, enter_dfu, leave_dfu, upload};
+use bose_dfu::{ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -26,6 +26,12 @@ fn get_mode(pid: u16) -> Option<DeviceMode> {
 enum Opt {
     /// List all connected Bose HID devices (vendor ID 0x05a7)
     List,
+
+    /// Get information about a specific device not in DFU mode
+    Info {
+        #[structopt(flatten)]
+        spec: DeviceSpec,
+    },
 
     /// Put a device into DFU mode
     EnterDfu {
@@ -137,6 +143,21 @@ fn main() -> Result<()> {
 
     match mode {
         Opt::List => list(&api),
+        Opt::Info { spec } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Normal),
+                ..spec
+            };
+            let dev = &spec.get_device(&api)?;
+
+            use bose_dfu::InfoField::*;
+            println!("Device model: {}", read_info_field(dev, DeviceModel)?);
+            println!("Serial: {}", read_info_field(dev, SerialNumber)?);
+            println!(
+                "Current firmware: {}",
+                read_info_field(dev, CurrentFirmware)?
+            );
+        }
         Opt::EnterDfu { spec } => {
             let spec = DeviceSpec {
                 required_mode: Some(DeviceMode::Normal),

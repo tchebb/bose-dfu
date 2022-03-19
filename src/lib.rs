@@ -208,6 +208,9 @@ pub enum ProtocolError {
 
     #[error("file too large: overflowed 16-bit block number while sending")]
     FileTooLarge,
+
+    #[error("device returned invalid UTF-8 string")]
+    InvalidString(#[from] std::str::Utf8Error),
 }
 
 /// All errors (protocol and I/O) that can happen during a DFU operation.
@@ -272,6 +275,59 @@ pub fn ensure_idle(device: &hidapi::HidDevice) -> Result<(), Error> {
     let status = DfuStatusResult::read_from_device(device)?;
     status.ensure_ok()?;
     status.ensure_state(dfuIDLE).map_err(Into::into)
+}
+
+/// Types of information that Bose's normal firmware exposes.
+#[non_exhaustive]
+pub enum InfoField {
+    DeviceModel,
+    SerialNumber,
+    CurrentFirmware,
+}
+
+/// Read an information field (as listed in [InfoField]) from the normal firmware. `device` must
+/// NOT be in DFU mode.
+pub fn read_info_field(device: &hidapi::HidDevice, field: InfoField) -> Result<String, Error> {
+    const INFO_REPORT_ID: u8 = 2;
+    const INFO_REPORT_LEN: usize = 126;
+
+    use InfoField::*;
+
+    // 1 byte report ID + 2 bytes field ID + 1 byte NUL
+    let mut request_report = [0u8; 1 + 2 + 1];
+
+    // Packet captures indicate that "lc" is also a valid field type in some situations. "lc" is
+    // the only one that's written without being read, and it always precedes a "pl" read. When
+    // I've tried to send it, though, I've just gotten errors.
+    request_report[0] = INFO_REPORT_ID;
+    request_report[1..3].copy_from_slice(match field {
+        DeviceModel => b"pl",
+        SerialNumber => b"sn",
+        CurrentFirmware => b"vr",
+    });
+
+    device
+        .send_feature_report(&request_report)
+        .map_err(|e| Error::DeviceIoError {
+            source: e,
+            action: "requesting info field",
+        })?;
+
+    let mut response_report = [0u8; 1 + INFO_REPORT_LEN];
+    response_report[0] = INFO_REPORT_ID;
+    device
+        .get_feature_report(&mut response_report)
+        .map_err(|e| Error::DeviceIoError {
+            source: e,
+            action: "reading info field",
+        })?;
+
+    // Result is all bytes after the report ID and before the first NUL.
+    let result = &response_report[1..].split(|&x| x == 0).next().unwrap();
+
+    Ok(std::str::from_utf8(result)
+        .map_err(|e| Error::ProtocolError(e.into()))?
+        .to_owned())
 }
 
 /// Put a device running the normal firmware into DFU mode. `device` must NOT be in DFU mode.
