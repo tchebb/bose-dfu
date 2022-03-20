@@ -226,7 +226,7 @@ pub enum Error {
         action: &'static str,
     },
 
-    #[error("File I/O error")]
+    #[error("file I/O error")]
     FileIoError(#[from] std::io::Error),
 }
 
