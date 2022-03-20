@@ -82,7 +82,7 @@ enum DeviceMode {
 
 #[derive(Parser, Debug)]
 struct DeviceSpec {
-    /// Serial number
+    /// USB serial number
     #[clap(short)]
     serial: Option<String>,
 
