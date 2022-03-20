@@ -147,6 +147,7 @@ fn main() -> Result<()> {
             .filter_or("BOSE_DFU_LOG", "info")
             .write_style("BOSE_DFU_LOG_STYLE"),
     )
+    .format_timestamp(None)
     .init();
 
     let mode = Opt::from_args();
