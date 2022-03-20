@@ -1,10 +1,10 @@
 use anyhow::{bail, Result};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
 use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
+use clap::Parser;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
 use std::io::Read;
-use structopt::StructOpt;
 use thiserror::Error;
 
 const BOSE_VID: u16 = 0x05a7;
@@ -25,42 +25,42 @@ fn get_mode(pid: u16) -> Option<DeviceMode> {
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "bose-dfu")]
+#[derive(Parser, Debug)]
+#[clap(version)]
 enum Opt {
     /// List all connected Bose HID devices (vendor ID 0x05a7)
     List,
 
     /// Get information about a specific device not in DFU mode
     Info {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         spec: DeviceSpec,
     },
 
     /// Put a device into DFU mode
     EnterDfu {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         spec: DeviceSpec,
     },
 
     /// Take a device out of DFU mode
     LeaveDfu {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         spec: DeviceSpec,
     },
 
     /// Write firmware to a device in DFU mode
     Download {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         spec: DeviceSpec,
 
-        #[structopt(parse(from_os_str))]
+        #[clap(parse(from_os_str))]
         file: std::path::PathBuf,
     },
 
     /// Print target device and checksum info for a firmware file
     FileInfo {
-        #[structopt(parse(from_os_str))]
+        #[clap(parse(from_os_str))]
         file: std::path::PathBuf,
     },
 }
@@ -80,18 +80,18 @@ enum DeviceMode {
     Dfu,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 struct DeviceSpec {
     /// Serial number
-    #[structopt(short)]
+    #[clap(short)]
     serial: Option<String>,
 
     /// Product ID (vendor ID is always matched against Bose's, 0x05a7)
-    #[structopt(short)]
+    #[clap(short)]
     pid: Option<u16>,
 
     /// DFU/normal mode (determined using product ID for known devices)
-    #[structopt(skip)]
+    #[clap(skip)]
     required_mode: Option<DeviceMode>,
 }
 
@@ -150,7 +150,7 @@ fn main() -> Result<()> {
     .format_timestamp(None)
     .init();
 
-    let mode = Opt::from_args();
+    let mode = Opt::parse();
 
     let api = HidApi::new()?;
 
