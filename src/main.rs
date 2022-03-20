@@ -206,10 +206,7 @@ fn main() -> Result<()> {
                 // TODO: Require a "force" flag to proceed?
             }
 
-            info!(
-                "Validated DFU file (version {}) is for this device",
-                suffix.release_number
-            );
+            info!("Validated DFU file is for this device");
 
             ensure_idle(dev)?;
 
