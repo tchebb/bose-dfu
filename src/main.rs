@@ -255,7 +255,9 @@ fn list(hidapi: &HidApi) {
         };
 
         println!(
-            "{} {} [{}]",
+            "{:04x}:{:04x} {} {} [{}]",
+            dev.vendor_id(),
+            dev.product_id(),
             dev.serial_number().unwrap_or("INVALID"),
             dev.product_string().unwrap_or("INVALID"),
             support_status,
