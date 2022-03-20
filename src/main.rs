@@ -161,15 +161,15 @@ fn main() -> Result<()> {
                 required_mode: Some(DeviceMode::Normal),
                 ..spec
             };
-            let (dev, info) = &spec.get_device(&api)?;
+            let (dev, info) = spec.get_device(&api)?;
 
             use bose_dfu::protocol::InfoField::*;
             println!("USB serial: {}", info.serial_number().unwrap_or("INVALID"));
-            println!("HW serial: {}", read_info_field(dev, SerialNumber)?);
-            println!("Device model: {}", read_info_field(dev, DeviceModel)?);
+            println!("HW serial: {}", read_info_field(&dev, SerialNumber)?);
+            println!("Device model: {}", read_info_field(&dev, DeviceModel)?);
             println!(
                 "Current firmware: {}",
-                read_info_field(dev, CurrentFirmware)?
+                read_info_field(&dev, CurrentFirmware)?
             );
         }
         Opt::EnterDfu { spec } => {
@@ -193,7 +193,7 @@ fn main() -> Result<()> {
             };
 
             // We want to report device errors first, even if file parse errors also exist.
-            let (dev, info) = &spec.get_device(&api)?;
+            let (dev, info) = spec.get_device(&api)?;
 
             let mut file = std::fs::File::open(path)?;
             let suffix = parse_dfu_file(&mut file)?;
@@ -215,10 +215,10 @@ fn main() -> Result<()> {
 
             info!("Update verified to be for selected device");
 
-            ensure_idle(dev)?;
+            ensure_idle(&dev)?;
 
             info!("Beginning firmware download; it may take several minutes");
-            download(dev, &mut file.by_ref().take(suffix.payload_length))?;
+            download(&dev, &mut file.by_ref().take(suffix.payload_length))?;
         }
         Opt::FileInfo { file: path } => {
             let mut file = std::fs::File::open(path)?;
