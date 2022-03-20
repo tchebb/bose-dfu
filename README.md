@@ -1,5 +1,5 @@
-Purpose
--------
+For users
+=========
 bose-dfu is an open-source implementation of Bose's USB update protocol for
 certain Bose devices that take updates in `.dfu` format. Using this tool, you
 can enter and leave firmware update ("DFU") mode on compatible devices. When in
@@ -86,6 +86,9 @@ cannot successfully be written back to the device. As such, I've intentionally
 omitted an `upload` subcommand to prevent confusion. I have left a function
 that can perform uploads in `src/protocol.rs`, though: if you want to try it
 out, adding the corresponding subcommand is left to you as an exercise.
+
+For developers
+==============
 
 Protocol
 --------
