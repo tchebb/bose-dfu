@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
 use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
 use clap::Parser;
@@ -134,8 +134,8 @@ impl DeviceSpec {
                     Err(MatchError::MultipleDevices.into())
                 } else {
                     dev.open_device(hidapi)
-                        .map_err(Into::into)
                         .map(|open| (open, dev))
+                        .context("failed to open device; do you have permission?")
                 }
             }
         }
