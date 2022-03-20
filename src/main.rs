@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bose_dfu::{ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
+use bose_dfu::protocol::{ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use structopt::StructOpt;
 use thiserror::Error;
@@ -153,7 +153,7 @@ fn main() -> Result<()> {
             };
             let (dev, info) = &spec.get_device(&api)?;
 
-            use bose_dfu::InfoField::*;
+            use bose_dfu::protocol::InfoField::*;
             println!("USB serial: {}", info.serial_number().unwrap_or("INVALID"));
             println!("HW serial: {}", read_info_field(dev, SerialNumber)?);
             println!("Device model: {}", read_info_field(dev, DeviceModel)?);
