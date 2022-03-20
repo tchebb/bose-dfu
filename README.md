@@ -60,6 +60,14 @@ files it contains.
 
 FAQ
 ===
+### Can updating my device's firmware brick it?
+Quite possibly. There have been reports online of even the official Bose
+updater bricking headphones. That being said, my SoundLink Color II appears to
+fall back to DFU mode when its firmware is corrupt, allowing recovery even if
+something goes wrong. I have intentionally disconnected its USB cable in the
+middle of a firmware download, and I was able to perform a second, successful
+download just fine after reconnecting it.
+
 ### Can bose-dfu read firmware as well as writing it?
 Not out of the box. Although DFU includes an upload request, which is supposed
 to read back the exact firmware that was last downloaded, Bose's implementation
