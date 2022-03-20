@@ -179,6 +179,7 @@ fn main() -> Result<()> {
                 ..spec
             };
             enter_dfu(&spec.get_device(&api)?.0)?;
+            info!("Note that device may take a few seconds to change mode");
         }
         Opt::LeaveDfu { spec } => {
             let spec = DeviceSpec {
@@ -263,7 +264,7 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path) -> Result<()> {
 
     ensure_idle(dev)?;
 
-    info!("Beginning firmware download; it may take several minutes");
+    info!("Beginning firmware download; it may take several minutes; do not unplug device");
     download(dev, &mut file.by_ref().take(suffix.payload_length))?;
 
     Ok(())
