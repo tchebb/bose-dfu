@@ -17,3 +17,7 @@ crc32fast = "1.2"
 
 # Only required for binary
 clap = { version = "3.1", features = ["derive"] }
+
+[profile.release]
+strip = "symbols"
+lto = "fat"
