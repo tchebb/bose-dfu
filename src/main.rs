@@ -213,7 +213,7 @@ fn main() -> Result<()> {
                 // TODO: Require a "force" flag to proceed?
             }
 
-            info!("This file is for the selected device");
+            info!("Update verified to be for selected device");
 
             ensure_idle(dev)?;
 
