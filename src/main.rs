@@ -58,7 +58,7 @@ enum Opt {
         file: std::path::PathBuf,
     },
 
-    /// Print target device and checksum info for a firmware file
+    /// Print metadata about a firmware file, no device needed
     FileInfo {
         #[clap(parse(from_os_str))]
         file: std::path::PathBuf,
@@ -213,7 +213,7 @@ fn main() -> Result<()> {
                 // TODO: Require a "force" flag to proceed?
             }
 
-            info!("Validated DFU file is for this device");
+            info!("This file is for the selected device");
 
             ensure_idle(dev)?;
 
