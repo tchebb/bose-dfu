@@ -68,6 +68,23 @@ accuracy of the files their repositories contain.
 
 [ced]: https://github.com/bosefirmware/ced
 
+Installation
+------------
+If you already have a Rust toolchain installed on your computer, installing
+bose-dfu is as simple as running `cargo install bose-dfu`. To get a Rust
+toolchain, you can use [rustup](https://rustup.rs/) or install `rust` using
+your system's package manager.
+
+Alternatively, you can find prebuilt binaries for Linux, Windows, and macOS on
+the [releases](https://github.com/tchebb/bose-dfu/releases) page.
+
+If you're using Linux and DFU operations result in a permission error or the
+names and serial numbers from `bose-dfu list` are "INVALID", you likely need to
+grant permission for the HID device to your user. You can do this by copying
+`70-bose-dfu.rules` into `/etc/udev/rules.d/` and reconnecting the device (no
+reboot needed). If your device is untested, it won't yet have an entry in that
+file and you'll need to add one yourself.
+
 FAQ
 ---
 ### Can updating my device's firmware brick it?
