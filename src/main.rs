@@ -57,6 +57,12 @@ enum Opt {
         #[structopt(parse(from_os_str))]
         file: std::path::PathBuf,
     },
+
+    /// Print target device and checksum info for a firmware file
+    FileInfo {
+        #[structopt(parse(from_os_str))]
+        file: std::path::PathBuf,
+    },
 }
 
 #[derive(Error, Debug)]
@@ -212,6 +218,22 @@ fn main() -> Result<()> {
 
             info!("Beginning firmware download; it may take several minutes");
             download(dev, &mut file.by_ref().take(suffix.payload_length))?;
+        }
+        Opt::FileInfo { file: path } => {
+            let mut file = std::fs::File::open(path)?;
+            let suffix = parse_dfu_file(&mut file)?;
+
+            println!(
+                "For USB ID: {:04x}:{:04x}",
+                suffix.vendor_id, suffix.product_id
+            );
+            match suffix.has_valid_crc() {
+                true => println!("CRC: valid ({:#010x})", suffix.expected_crc),
+                false => println!(
+                    "CRC: INVALID (expected {:#010x}, actual {:#010x}",
+                    suffix.expected_crc, suffix.actual_crc
+                ),
+            }
         }
     };
 
