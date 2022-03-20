@@ -5,6 +5,7 @@ use clap::Parser;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
 use std::io::Read;
+use std::path::Path;
 use thiserror::Error;
 
 const BOSE_VID: u16 = 0x05a7;
@@ -155,7 +156,7 @@ fn main() -> Result<()> {
     let api = HidApi::new()?;
 
     match mode {
-        Opt::List => list(&api),
+        Opt::List => list_cmd(&api),
         Opt::Info { spec } => {
             let spec = DeviceSpec {
                 required_mode: Some(DeviceMode::Normal),
@@ -186,39 +187,13 @@ fn main() -> Result<()> {
             };
             leave_dfu(&spec.get_device(&api)?.0)?;
         }
-        Opt::Download { spec, file: path } => {
+        Opt::Download { spec, file } => {
             let spec = DeviceSpec {
                 required_mode: Some(DeviceMode::Dfu),
                 ..spec
             };
-
-            // We want to report device errors first, even if file parse errors also exist.
             let (dev, info) = spec.get_device(&api)?;
-
-            let mut file = std::fs::File::open(path)?;
-            let suffix = parse_dfu_file(&mut file)?;
-            suffix.ensure_valid_crc()?;
-
-            let (vid, pid) = (info.vendor_id(), info.product_id());
-            if !suffix.vendor_id.matches(vid) || !suffix.product_id.matches(pid) {
-                bail!("This file is not for the selected device! File for {:04x}:{:04x}, device is {:04x}:{:04x}",
-                suffix.vendor_id, suffix.product_id, vid, pid)
-            }
-
-            if suffix.vendor_id.0.is_none() || suffix.product_id.0.is_none() {
-                warn!(
-                    "DFU file's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
-                    suffix.vendor_id, suffix.product_id
-                )
-                // TODO: Require a "force" flag to proceed?
-            }
-
-            info!("Update verified to be for selected device");
-
-            ensure_idle(&dev)?;
-
-            info!("Beginning firmware download; it may take several minutes");
-            download(&dev, &mut file.by_ref().take(suffix.payload_length))?;
+            download_cmd(&dev, info, &file)?
         }
         Opt::FileInfo { file: path } => {
             let mut file = std::fs::File::open(path)?;
@@ -241,7 +216,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn list(hidapi: &HidApi) {
+fn list_cmd(hidapi: &HidApi) {
     let all_spec = DeviceSpec {
         serial: None,
         pid: None,
@@ -263,4 +238,33 @@ fn list(hidapi: &HidApi) {
             support_status,
         );
     }
+}
+
+fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path) -> Result<()> {
+    let mut file = std::fs::File::open(path)?;
+    let suffix = parse_dfu_file(&mut file)?;
+    suffix.ensure_valid_crc()?;
+
+    let (vid, pid) = (info.vendor_id(), info.product_id());
+    if !suffix.vendor_id.matches(vid) || !suffix.product_id.matches(pid) {
+        bail!("This file is not for the selected device! File for {:04x}:{:04x}, device is {:04x}:{:04x}",
+        suffix.vendor_id, suffix.product_id, vid, pid)
+    }
+
+    if suffix.vendor_id.0.is_none() || suffix.product_id.0.is_none() {
+        warn!(
+            "DFU file's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
+            suffix.vendor_id, suffix.product_id
+        )
+        // TODO: Require a "force" flag to proceed?
+    }
+
+    info!("Update verified to be for selected device");
+
+    ensure_idle(dev)?;
+
+    info!("Beginning firmware download; it may take several minutes");
+    download(dev, &mut file.by_ref().take(suffix.payload_length))?;
+
+    Ok(())
 }
