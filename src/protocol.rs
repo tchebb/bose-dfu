@@ -78,12 +78,11 @@ impl DfuState {
     fn read_from_device(device: &HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 1]; // 1 byte report ID + 1 byte state
         report[0] = DfuReportType::StateCmd as u8;
-        device
-            .get_feature_report(&mut report)
-            .map_err(|e| Error::DeviceIoError {
-                source: e,
-                action: "querying state",
-            })?;
+        map_gfr(
+            device.get_feature_report(&mut report),
+            report.len(),
+            "querying state",
+        )?;
 
         Self::try_from(report[1]).map_err(|e| ProtocolError::UnknownState(e.number).into())
     }
@@ -111,12 +110,11 @@ impl DfuStatusResult {
     fn read_from_device(device: &HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 6]; // 1 byte report ID + 6 bytes status
         report[0] = DfuReportType::GetStatus as u8;
-        device
-            .get_feature_report(&mut report)
-            .map_err(|e| Error::DeviceIoError {
-                source: e,
-                action: "querying status",
-            })?;
+        map_gfr(
+            device.get_feature_report(&mut report),
+            report.len(),
+            "querying status",
+        )?;
 
         let mut cursor = std::io::Cursor::new(report);
         cursor.set_position(1); // Skip report number
@@ -211,6 +209,9 @@ pub enum ProtocolError {
 
     #[error("device returned invalid UTF-8 string")]
     InvalidString(#[from] std::str::Utf8Error),
+
+    #[error("feature report from device contained {actual} bytes, expected {expected}")]
+    ReportTooShort { expected: usize, actual: usize },
 }
 
 /// All errors (protocol and I/O) that can happen during a DFU operation.
@@ -228,6 +229,23 @@ pub enum Error {
 
     #[error("file I/O error")]
     FileIoError(#[from] std::io::Error),
+}
+
+/// Map the result of get_feature_report() into an appropriate error if it failed or was too short.
+fn map_gfr(
+    r: Result<usize, HidError>,
+    min_size: usize,
+    action: &'static str,
+) -> Result<usize, Error> {
+    match r {
+        Err(e) => Err(Error::DeviceIoError { source: e, action }),
+        Ok(s) if s < min_size => Err(ProtocolError::ReportTooShort {
+            expected: min_size,
+            actual: s,
+        }
+        .into()),
+        Ok(s) => Ok(s),
+    }
 }
 
 /// Attempt to transition the device to the [dfuIDLE](DfuState::dfuIDLE) state. If we can't or
@@ -315,12 +333,11 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
 
     let mut response_report = [0u8; 1 + INFO_REPORT_LEN];
     response_report[0] = INFO_REPORT_ID;
-    device
-        .get_feature_report(&mut response_report)
-        .map_err(|e| Error::DeviceIoError {
-            source: e,
-            action: "reading info field",
-        })?;
+    map_gfr(
+        device.get_feature_report(&mut response_report),
+        1,
+        "reading info field",
+    )?;
 
     // Result is all bytes after the report ID and before the first NUL.
     let result = &response_report[1..].split(|&x| x == 0).next().unwrap();
@@ -364,18 +381,29 @@ pub fn upload(device: &HidDevice, file: &mut impl Write) -> Result<(), Error> {
     let mut report = [0u8; 1 + XFER_HEADER_SIZE + XFER_DATA_SIZE];
 
     loop {
+        // Zero out the report each time through to protect against hidapi bugs.
+        report.fill(0u8);
+
         report[0] = DfuReportType::UploadDownload as u8;
-        device
-            .get_feature_report(&mut report)
-            .map_err(|e| Error::DeviceIoError {
-                source: e,
-                action: "reading firmware data chunk",
-            })?;
+        let report_size = map_gfr(
+            device.get_feature_report(&mut report),
+            1 + XFER_HEADER_SIZE,
+            "reading firmware data chunk",
+        )?;
+
         let status = DfuStatusResult::read_from_device(device)?;
         status.ensure_ok()?;
 
         let data_size = LE::read_u16(&report[1..3]) as usize;
-        let data_start = XFER_HEADER_SIZE + 1;
+        let data_start = 1 + XFER_HEADER_SIZE;
+
+        if report_size < data_start + data_size {
+            return Err(ProtocolError::ReportTooShort {
+                expected: data_start + data_size,
+                actual: report_size,
+            }
+            .into());
+        }
 
         trace!("Successfully uploaded block ({} bytes)", data_size);
 
