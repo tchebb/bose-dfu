@@ -45,7 +45,7 @@ impl DfuStatus {
             errVERIFY => "Programmed memory failed verification.",
             errADDRESS => "Cannot program memory due to received address that is out of range.",
             errNOTDONE => "Received DFU_DNLOAD with wLength = 0, but device does not think it has all of the data yet.",
-            errFIRMWARE => "Device’s firmware is corrupt. It cannot return to run-time (non-DFU operations.",
+            errFIRMWARE => "Device's firmware is corrupt. It cannot return to run-time (non-DFU) operations.",
             errVENDOR => "iString indicates a vendor-specific error.",
             errUSBR => "Device detected unexpected USB reset signaling.",
             errPOR => "Device detected unexpected power on reset.",
