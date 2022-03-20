@@ -1,19 +1,20 @@
 Purpose
 =======
 bose-dfu is an open-source implementation of Bose's USB update protocol for
-their ced line of speakers and headphones. I do not know what "ced" stands for,
-but there is a list of such devices in [this][ced] repository (which I am not
-affiliated with), so check for yours!
+certain Bose devices that take updates in `.dfu` format. Using this tool, you
+can enter and leave firmware update ("DFU") mode on compatible devices. When in
+DFU mode, you can write a device's firmware, including to downgrade it to an
+earlier version.
 
-Using this tool, you can enter and leave firmware update mode ("DFU mode") on
-any supported device. When in DFU mode, you can read and write a device's
-firmware, including to downgrade it to an earlier version.
+See the next section for a list of devices known to be compatible and the one
+after that for instructions on how to find firmware images for your device,
+which can tell you if an untested device uses the `.dfu` format.
 
 Device compatibility
 ====================
 The only Bose device I own is a SoundLink Color II speaker, and so all initial
 development and testing took place against that. However, a quick spot check of
-the firmware images for other ced devices indicates that they all use the same
+the firmware images for other devices indicates that many of them use the same
 image format and so likely speak the same protocol.
 
 I cannot guarantee this, however, so **be aware that you are volunteering to
@@ -42,19 +43,30 @@ Directly from Bose
 Bose hosts the latest firmware (and possibly earlier ones, too) for each device
 at https://downloads.bose.com/.  Although directory listings are not enabled on
 that server, you can get a listing of all supported devices by fetching
-https://downloads.bose.com/lookup.xml. Each `<PRODUCT>` element in that file
-holds the USB PID of the corresponding device when it's in DFU mode (i.e. after
-running bose-dfu's `enter-dfu` subcommand) as well as a URL to an `index.xml`
-for the device. Each `index.xml` holds the filename of that device's latest
-firmware in its `<IMAGE>` element. The firmware files are hosted in the same
-per-device subdirectories that hold the `index.xml` files.
+https://downloads.bose.com/lookup.xml.
+
+Each `<PRODUCT>` element in that file holds the USB PID of the corresponding
+device when it's in DFU mode as well as the URL of an `index.xml` file in a
+subdirectory named for the device's codename. Each `index.xml` holds the
+filename of its device's latest firmware image(s) in one or more `<IMAGE>`
+elements. Those firmware images live alongside the `index.xml` file that refers
+to them.
+
+To find firmware for your device, you can run `bose-dfu info` and match its
+codename in the "Device model" field against a directory on Bose's server.
+Alternatively, you can put it into DFU mode using `bose-dfu enter-dfu`, get its
+USB ID using `bose-dfu list`, and match its USB PID (the part of the ID after
+the colon) against the elements in `lookup.xml`.
 
 Via unofficial archive
 ----------------------
-The [bosefirmware/ced][ced] GitHub repository also contains an easily-browsable
-archive of old firmwares for every ced device. Once again, I am not affiliated
-with this repository and do not guarantee the authenticity or accuracy of the
-files it contains.
+The [bosefirmware](https://github.com/bosefirmware) GitHub user maintains
+repositories archiving old firmwares for various lines of Bose devices. Several
+of these repositories contain `.dfu` files, although the [ced][ced] repository
+seems to hold the majority of them.
+
+I am not affiliated with this user and do not guarantee the authenticity or
+accuracy of the files their repositories contain.
 
 [ced]: https://github.com/bosefirmware/ced
 
