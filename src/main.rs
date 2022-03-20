@@ -26,7 +26,7 @@ fn get_mode(pid: u16) -> Option<DeviceMode> {
 }
 
 #[derive(Parser, Debug)]
-#[clap(version)]
+#[clap(version, setting = clap::AppSettings::DeriveDisplayOrder)]
 enum Opt {
     /// List all connected Bose HID devices (vendor ID 0x05a7)
     List,
