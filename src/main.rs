@@ -1,6 +1,9 @@
-use anyhow::Result;
-use bose_dfu::protocol::{ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
+use anyhow::{bail, Result};
+use bose_dfu::dfu_file::parse as parse_dfu_file;
+use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
+use log::{info, warn};
+use std::io::Read;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -48,6 +51,15 @@ enum Opt {
 
     /// Read the firmware of a device in DFU mode
     Upload {
+        #[structopt(flatten)]
+        spec: DeviceSpec,
+
+        #[structopt(parse(from_os_str))]
+        file: std::path::PathBuf,
+    },
+
+    /// Write firmware to a device in DFU mode
+    Download {
         #[structopt(flatten)]
         spec: DeviceSpec,
 
@@ -187,6 +199,43 @@ fn main() -> Result<()> {
 
             let mut file = std::fs::File::create(path)?;
             upload(dev, &mut file)?;
+        }
+        Opt::Download { spec, file: path } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Dfu),
+                ..spec
+            };
+
+            // We want to report device errors first, even if file parse errors also exist.
+            let (dev, info) = &spec.get_device(&api)?;
+
+            let mut file = std::fs::File::open(path)?;
+            let suffix = parse_dfu_file(&mut file)?;
+            suffix.ensure_valid_crc()?;
+
+            let (vid, pid) = (info.vendor_id(), info.product_id());
+            if !suffix.vendor_id.matches(vid) || !suffix.product_id.matches(pid) {
+                bail!("This file is not for the selected device! File for {:04x}:{:04x}, device is {:04x}:{:04x}",
+                suffix.vendor_id, suffix.product_id, vid, pid)
+            }
+
+            if suffix.vendor_id.0.is_none() || suffix.product_id.0.is_none() {
+                warn!(
+                    "DFU file's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
+                    suffix.vendor_id, suffix.product_id
+                )
+                // TODO: Require a "force" flag to proceed?
+            }
+
+            info!(
+                "Validated DFU file (version {}) is for this device",
+                suffix.release_number
+            );
+
+            ensure_idle(dev)?;
+
+            info!("Beginning firmware download; it may take several minutes");
+            download(dev, &mut file.by_ref().take(suffix.payload_length))?;
         }
     };
 
