@@ -430,11 +430,13 @@ pub fn download(device: &HidDevice, file: &mut impl Read) -> Result<(), Error> {
     let mut prev_delay = Duration::from_millis(0);
     loop {
         report.clear();
-        // Reserve 1 byte report ID + header to be filled later
+        // Reserve 1 byte report ID + header to be filled later.
         report.resize(1 + XFER_HEADER_SIZE, 0u8);
 
+        // Fill the rest with data from the file.
         let data_size = file.take(XFER_DATA_SIZE as _).read_to_end(&mut report)?;
 
+        // Construct header
         let mut cursor = std::io::Cursor::new(&mut report);
         cursor.write_u8(DfuReportType::UploadDownload as _).unwrap();
         cursor.write_u8(DfuRequest::DFU_DNLOAD as _).unwrap();
