@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
-use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field, upload};
+use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
 use std::io::Read;
@@ -47,15 +47,6 @@ enum Opt {
     LeaveDfu {
         #[structopt(flatten)]
         spec: DeviceSpec,
-    },
-
-    /// Read the firmware of a device in DFU mode
-    Upload {
-        #[structopt(flatten)]
-        spec: DeviceSpec,
-
-        #[structopt(parse(from_os_str))]
-        file: std::path::PathBuf,
     },
 
     /// Write firmware to a device in DFU mode
@@ -187,18 +178,6 @@ fn main() -> Result<()> {
                 ..spec
             };
             leave_dfu(&spec.get_device(&api)?.0)?;
-        }
-        Opt::Upload { spec, file: path } => {
-            let spec = DeviceSpec {
-                required_mode: Some(DeviceMode::Dfu),
-                ..spec
-            };
-
-            let (dev, _) = &spec.get_device(&api)?;
-            ensure_idle(dev)?;
-
-            let mut file = std::fs::File::create(path)?;
-            upload(dev, &mut file)?;
         }
         Opt::Download { spec, file: path } => {
             let spec = DeviceSpec {

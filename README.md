@@ -58,6 +58,17 @@ files it contains.
 
 [ced]: https://github.com/bosefirmware/ced
 
+FAQ
+===
+### Can bose-dfu read firmware as well as writing it?
+Not out of the box. Although DFU includes an upload request, which is supposed
+to read back the exact firmware that was last downloaded, Bose's implementation
+of this request on my device returns an image that is not identical and that
+cannot successfully be written back to the device. As such, I've intentionally
+omitted an `upload` subcommand to prevent confusion. I have left a function
+that can perform uploads in `src/protocol.rs`, though: if you want to try it
+out, adding the corresponding subcommand is left to you as an exercise.
+
 Protocol
 ========
 The USB protocol implemented herein was derived entirely from USB captures of
