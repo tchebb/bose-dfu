@@ -1,5 +1,6 @@
 [package]
 name = "bose-dfu"
+description = "Firmware updater for various Bose devices"
 version = "0.1.0"
 authors = ["Thomas Hebb <tommyhebb@gmail.com>"]
 edition = "2018"
