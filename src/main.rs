@@ -261,7 +261,7 @@ impl DeviceSpec {
     fn get_device<'a>(&self, hidapi: &'a HidApi) -> Result<(HidDevice, &'a DeviceInfo)> {
         let mut candidates = hidapi
             .device_list()
-            .filter_map(|d| (self.match_dev(d).map(|r| (d, r))));
+            .filter_map(|d| self.match_dev(d).map(|r| (d, r)));
 
         match candidates.next() {
             None => Err(MatchError::NoDevices.into()),

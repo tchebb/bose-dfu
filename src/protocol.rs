@@ -182,7 +182,7 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
     )?;
 
     // Result is all bytes after the report ID and before the first NUL.
-    let result = &response_report[1..].split(|&x| x == 0).next().unwrap();
+    let result = response_report[1..].split(|&x| x == 0).next().unwrap();
 
     Ok(std::str::from_utf8(result)
         .map_err(|e| Error::ProtocolError(e.into()))?
