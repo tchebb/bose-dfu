@@ -6,10 +6,13 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  TEMP_DIR: target/github-temp
 
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    env:
+      ARTIFACT_NAME: bose-dfu-${{ github.ref_name}}-linux-x86_64
     steps:
       - uses: actions/checkout@v2
       - name: Install libudev headers (for hidapi crate)
@@ -20,30 +23,34 @@ jobs:
         run: cargo build --verbose --release
       - name: Rename binary
         run: |
-          mkdir -p target/github-temp
-          mv target/release/bose-dfu target/github-temp/bose-dfu-linux-x86_64
+          mkdir -p "$TEMP_DIR"
+          mv target/release/bose-dfu "$TEMP_DIR/$ARTIFACT_NAME"
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/github-temp/bose-dfu-linux-x86_64
+          files: ${{ env.TEMP_DIR }}/${{ env.ARTIFACT_NAME }}
 
   build-windows:
     runs-on: windows-latest
+    env:
+      ARTIFACT_NAME: bose-dfu-${{ github.ref_name}}-win-x86_64.exe
     steps:
       - uses: actions/checkout@v2
       - name: Build
         run: cargo build --verbose --release
       - name: Rename binary
         run: |
-          mkdir -Force target/github-temp
-          mv target/release/bose-dfu.exe target/github-temp/bose-dfu-win-x86_64.exe
+          mkdir -Force "$Env:TEMP_DIR"
+          mv target/release/bose-dfu.exe "${Env:TEMP_DIR}/${Env:ARTIFACT_NAME}"
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/github-temp/bose-dfu-win-x86_64.exe
+          files: ${{ env.TEMP_DIR }}/${{ env.ARTIFACT_NAME }}
 
   build-macos:
     runs-on: macos-latest
+    env:
+      ARTIFACT_NAME: bose-dfu-${{ github.ref_name}}-mac-universal
     steps:
       - uses: actions/checkout@v2
       - name: Add x86_64-apple-darwin target
@@ -56,12 +63,12 @@ jobs:
         run: cargo build --verbose --target aarch64-apple-darwin --release
       - name: Make Universal binary
         run: |
-          mkdir -p target/github-temp
+          mkdir -p "$TEMP_DIR"
           lipo \
             target/x86_64-apple-darwin/release/bose-dfu \
             target/aarch64-apple-darwin/release/bose-dfu \
-            -output target/github-temp/bose-dfu-mac-universal -create
+            -output "$TEMP_DIR/$ARTIFACT_NAME" -create
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/github-temp/bose-dfu-mac-universal
+          files: ${{ env.TEMP_DIR }}/${{ env.ARTIFACT_NAME }}
