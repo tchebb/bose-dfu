@@ -1,0 +1,67 @@
+name: Release artifacts
+
+on:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install libudev headers (for hidapi crate)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libudev-dev
+      - name: Build
+        run: cargo build --verbose --release
+      - name: Rename binary
+        run: |
+          mkdir -p target/github-temp
+          mv target/release/bose-dfu target/github-temp/bose-dfu-linux-x86_64
+      - name: Add artifact to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/github-temp/bose-dfu-linux-x86_64
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        run: cargo build --verbose --release
+      - name: Rename binary
+        run: |
+          mkdir -Force target/github-temp
+          mv target/release/bose-dfu.exe target/github-temp/bose-dfu-win-x86_64.exe
+      - name: Add artifact to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/github-temp/bose-dfu-win-x86_64.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Add x86_64-apple-darwin target
+        run: rustup target add x86_64-apple-darwin
+      - name: Add aarch64-apple-darwin target
+        run: rustup target add aarch64-apple-darwin
+      - name: Build x86_64
+        run: cargo build --verbose --target x86_64-apple-darwin --release
+      - name: Build aarch64
+        run: cargo build --verbose --target aarch64-apple-darwin --release
+      - name: Make Universal binary
+        run: |
+          mkdir -p target/github-temp
+          lipo \
+            target/x86_64-apple-darwin/release/bose-dfu \
+            target/aarch64-apple-darwin/release/bose-dfu \
+            -output target/github-temp/bose-dfu-mac-universal -create
+      - name: Add artifact to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/github-temp/bose-dfu-mac-universal
