@@ -62,6 +62,8 @@ accuracy of the files their repositories contain.
 
 Installation
 ------------
+![Crates.io](https://img.shields.io/crates/v/bose-dfu)
+
 If you already have a Rust toolchain installed on your computer, installing
 bose-dfu is as simple as running `cargo install bose-dfu`. To get a Rust
 toolchain, you can use [rustup](https://rustup.rs/) or install `rust` using
@@ -134,6 +136,7 @@ subcommand is up to you.
 
 For developers
 ==============
+![docs.rs](https://img.shields.io/docsrs/bose-dfu)
 
 Protocol
 --------
