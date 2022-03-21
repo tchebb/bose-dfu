@@ -119,7 +119,9 @@ fn main() -> Result<()> {
                 required_mode: Some(DeviceMode::Dfu),
                 ..spec
             };
-            leave_dfu(&spec.get_device(&api)?.0)?;
+            let (dev, _) = spec.get_device(&api)?;
+            ensure_idle(&dev)?;
+            leave_dfu(&dev)?;
         }
         Opt::Download {
             spec,
