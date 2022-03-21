@@ -29,7 +29,7 @@ pub fn identify_device(id: UsbId, usage_page: u16) -> DeviceCompat {
         return DeviceCompat::Incompatible;
     }
 
-    // First, see if the device is known to us.
+    // See if the device is known to us.
     for candidate in COMPATIBLE_DEVICES {
         if let Some(mode) = candidate.match_id(id) {
             return DeviceCompat::Compatible(mode);
@@ -48,7 +48,7 @@ pub fn identify_device(id: UsbId, usage_page: u16) -> DeviceCompat {
 pub enum DeviceCompat {
     /// Known to speak the Bose DFU protocol. Usable by default.
     Compatible(DeviceMode),
-    /// May speak the Bose DFU protocol but has not been tested. Usable with "force" flag. Mode
+    /// May speak the Bose DFU protocol but has not been tested. Usable with `--force` flag. Mode
     /// currently always [DeviceMode::Unknown], but that may change if we find a non-PID way to
     /// identify different modes (e.g. parsing the HID descriptor).
     Untested(DeviceMode),

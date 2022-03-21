@@ -9,7 +9,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 const XFER_HEADER_SIZE: usize = 5;
-// Gathered from USB captures, probably corresponds to a 1024-byte internal buffer in the firmware.
+// Gathered from USB captures. Probably corresponds to a 1024-byte internal buffer in the firmware.
 const XFER_DATA_SIZE: usize = 1017;
 
 /// Download (i.e. write firmware to) the device. `device` must be in DFU mode. `file` should
@@ -137,7 +137,7 @@ pub fn upload(device: &HidDevice, file: &mut impl Write) -> Result<(), Error> {
     Ok(())
 }
 
-/// Types of information that Bose's normal firmware exposes.
+/// Pieces of information that Bose's normal firmware exposes.
 #[non_exhaustive]
 pub enum InfoField {
     DeviceModel,
@@ -181,7 +181,7 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
         "reading info field",
     )?;
 
-    // Result is all bytes after the report ID and before the first NUL.
+    // Result is all the bytes after the report ID and before the first NUL.
     let result = response_report[1..].split(|&x| x == 0).next().unwrap();
 
     Ok(std::str::from_utf8(result)
