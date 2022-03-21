@@ -10,24 +10,19 @@ See the next section for a list of devices known to be compatible and the one
 after that for instructions on how to find firmware images for your device,
 which can tell you if an untested device uses the `.dfu` format.
 
-Device compatibility
---------------------
-The only Bose device I own is a SoundLink Color II speaker, and so all initial
-development and testing took place against that. However, a quick spot check of
-the firmware images for other devices indicates that many of them use the same
-image format and so likely speak the same protocol.
+Tested devices
+--------------
+**Use this tool at your own risk. I will not take responsibility for damage
+bose-dfu does to your device, even if that device is on the following list:**
 
-I cannot guarantee this, however, so **be aware that you are volunteering to
-potentially brick your device if you use this tool on one that has not yet been
-tested**. bose-dfu will warn you before proceeding in this case so that you are
-aware of the risk. If you successfully use bose-dfu with a device that's not
-yet on the list below, please open a pull request to add it to the list.
+ - SoundLink Color II (used for initial development)
 
-Tested devices:
- - SoundLink Color II
-
-**Use this tool at your own risk. I will not take responsibility for any damage
-bose-dfu does to your device, even if that device is on the list above.**
+It's likely that most Bose devices that take updates in `.dfu` format work with
+this tool, but I can't guarantee that. If your device isn't on the list above
+and you use this tool, **you are volunteering to potentially brick your
+device**.  bose-dfu will warn you before it operates on an untested device. If
+you successfully use bose-dfu with such a device, please open a pull request to
+add it to the list.
 
 Obtaining firmware
 ------------------
@@ -40,28 +35,25 @@ unofficial archive linked above.
 
 ### Directly from Bose
 Bose hosts the latest firmware (and possibly earlier ones, too) for each device
-at https://downloads.bose.com/.  Although directory listings are not enabled on
-that server, you can get a listing of all supported devices by fetching
-https://downloads.bose.com/lookup.xml.
+at https://downloads.bose.com/. Although directory listings aren't enabled,
+https://downloads.bose.com/lookup.xml lists all devices.
 
-Each `<PRODUCT>` element in that file holds the USB PID of the corresponding
-device when it's in DFU mode as well as the URL of an `index.xml` file in a
-subdirectory named for the device's codename. Each `index.xml` holds the
-filename of its device's latest firmware image(s) in one or more `<IMAGE>`
-elements. Those firmware images live alongside the `index.xml` file that refers
-to them.
+Each `<PRODUCT>` element in `lookup.xml` holds both the USB product ID of that
+device when in DFU mode and the URL of an `index.xml` file for the device.
+`index.xml` lives in a directory named for the device's codename and holds the
+filename(s) of its latest firmware image in one or more `<IMAGE>` elements.
+Firmware files live alongside the `index.xml` file that refers to them.
 
-To find firmware for your device, you can run `bose-dfu info` and match its
-codename in the "Device model" field against a directory on Bose's server.
-Alternatively, you can put it into DFU mode using `bose-dfu enter-dfu`, get its
-USB ID using `bose-dfu list`, and match its USB PID (the part of the ID after
-the colon) against the elements in `lookup.xml`.
+To find firmware for your device, you can run `bose-dfu info` and match the
+"Device model" field against directory names on Bose's server. Alternatively,
+you can put your device in DFU mode using `bose-dfu enter-dfu`, get its USB ID
+using `bose-dfu list`, and match its USB PID (the part of the ID after the
+colon) against a `<PRODUCT>` element in `lookup.xml`.
 
 ### Via unofficial archive
 The [bosefirmware](https://github.com/bosefirmware) GitHub user maintains
 repositories archiving old firmwares for various lines of Bose devices. Several
-of these repositories contain `.dfu` files, although the [ced][ced] repository
-seems to hold the majority of them.
+of these repositories, most notably [ced][ced], contain `.dfu` files.
 
 I am not affiliated with this user and do not guarantee the authenticity or
 accuracy of the files their repositories contain.
@@ -78,12 +70,12 @@ your system's package manager.
 Alternatively, you can find prebuilt binaries for Linux, Windows, and macOS on
 the [releases](https://github.com/tchebb/bose-dfu/releases) page.
 
-If you're using Linux and DFU operations result in a permission error or the
-names and serial numbers from `bose-dfu list` are "INVALID", you likely need to
-grant permission for the HID device to your user. You can do this by copying
-`70-bose-dfu.rules` into `/etc/udev/rules.d/` and reconnecting the device (no
-reboot needed). If your device is untested, it won't yet have an entry in that
-file and you'll need to add one yourself.
+If you use Linux and encounter permission errors or see `INVALID` in the output
+of `bose-dfu list`, you likely need to give your user permission to access Bose
+HID devices. You can do this by copying `70-bose-dfu.rules` into
+`/etc/udev/rules.d/` and reconnecting the device (no reboot needed). If your
+device is untested, it won't have an entry in that file so you'll need to add
+one yourself.
 
 Usage
 -----
@@ -111,35 +103,34 @@ SUBCOMMANDS:
 ```
 
 To update a device, you'll need to run at least `bose-dfu enter-dfu`, `bose-dfu
-download`, and `bose-dfu leave-dfu` in that order. The other subcommands help
-you inspect the current state of devices and update files. Notable is `info`,
+download`, and `bose-dfu leave-dfu`, in that order. The other subcommands help
+you inspect the current state of devices and firmware files. Notable is `info`,
 which tells you the current firmware version a device is running.
 
-Subcommands which perform an operation on a device all support arguments for
-selecting which device to talk to when multiple are connected.  You can use
-`-p` to select by USB product ID, `-s` to select by USB serial number, or both
-together. Additionally, these subcommands take the `-f`/`--force` flag, which
-has no effect for tested devices but is required to perform operations on
-untested ones.
+Subcommands that perform an operation on a device support arguments for
+selecting which device to talk to.  You can use `-p` to select by USB product
+ID, `-s` to select by USB serial number, or both together. Additionally, the
+same subcommands support the `-f`/`--force` flag, which has no effect for
+tested devices but is required to perform operations on untested ones.
 
 FAQ
 ---
 ### Can updating my device's firmware brick it?
-Quite possibly. There have been reports online of even the official Bose
-updater bricking headphones. That being said, my SoundLink Color II appears to
-fall back to DFU mode when its firmware is corrupt, allowing recovery even if
-something goes wrong. I have intentionally disconnected its USB cable in the
-middle of a firmware download, and I was able to perform a second, successful
-download just fine after reconnecting it.
+Quite possibly; there have been reports online of even the official Bose
+updater bricking headphones. That being said, my SoundLink Color II falls back
+to DFU mode when its firmware is corrupt, allowing for easy recovery. I have
+not yet managed to brick it while developing this tool, and my attempts have
+included intentionally disconnecting its USB cable in the middle of a firmware
+download.
 
 ### Can bose-dfu read firmware as well as writing it?
-Not out of the box. Although DFU includes an upload request, which is supposed
-to read back the exact firmware that was last downloaded, Bose's implementation
-of this request on my device returns an image that is not identical and that
-cannot successfully be written back to the device. As such, I've intentionally
-omitted an `upload` subcommand to prevent confusion. I have left a function
-that can perform uploads in `src/protocol.rs`, though: if you want to try it
-out, adding the corresponding subcommand is left to you as an exercise.
+Not out of the box. Although USB DFU supports an upload operation, which is
+supposed to read back the exact firmware that was last downloaded, Bose's
+implementation of it returns an image that's not identical and which can't be
+successfully re-downloaded. As such, I've intentionally omitted an `upload`
+subcommand to prevent confusion. There is an `upload()` function in
+`src/protocol.rs`, though: if you want to use it, adding a corresponding
+subcommand is up to you.
 
 For developers
 ==============
@@ -175,18 +166,18 @@ develop bose-dfu. I did not inspect it in any further detail.
 
 The second is the Electron-based "[Bose USB Link Updater][usb-link-updater]",
 which bundles and invokes a patched version of [dfu-util][dfu-util] that
-implements this protocol, which Bose seems to call "USB-DFU" based on strings
-in the Electron code. It also includes a custom utility called "dfuhid" that
-puts a Bose device into DFU mode, same as bose-dfu's `enter-dfu` subcommand.
+implements this protocol (which Bose seems to call "USB-DFU" based on strings
+in the Electron code). It also includes a custom utility called "dfuhid" that
+puts a device into DFU mode, serving the same purpose as `bose-dfu enter-dfu`.
 
-Notably, I have been unable to find source code for the modified dfu-util.
-dfu-util is a GPL application, and so Bose is obligated to provide source upon
+Notably, I have been unable to find source code for this modified dfu-util.
+dfu-util is a GPL application, so Bose is obligated to provide source upon
 request. However, based on their license text, I expect they will honor this
 obligation only if you mail them a physical letter and pay for them to ship you
-a copy of the source on physical media. This is more work than I want to do,
-but I will happily review the source if someone else goes to the trouble of
-getting it. It may well contain useful information that can be used to increase
-bose-dfu's reliability or device compatibility.
+the source on physical media. This is more work than I want to do, but I will
+happily review the source if someone else goes to the trouble of getting it. It
+may well contain useful information that can be used to increase bose-dfu's
+reliability or device compatibility.
 
 [usb-link-updater]: https://pro.bose.com/en_us/products/software/conferencing_software/bose-usb-link-updater.html
 [dfu-util]: http://dfu-util.sourceforge.net/
