@@ -21,9 +21,11 @@ jobs:
           sudo apt-get install libudev-dev
       - name: Build
         run: cargo build --verbose --release
-      - name: Rename binary
+      - name: Create temp dir
         run: |
           mkdir -p "$TEMP_DIR"
+      - name: Rename binary
+        run: |
           mv target/release/bose-dfu "$TEMP_DIR/$ARTIFACT_NAME"
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
@@ -38,9 +40,11 @@ jobs:
       - uses: actions/checkout@v2
       - name: Build
         run: cargo build --verbose --release
-      - name: Rename binary
+      - name: Create temp dir
         run: |
           mkdir -Force "$Env:TEMP_DIR"
+      - name: Rename binary
+        run: |
           mv target/release/bose-dfu.exe "${Env:TEMP_DIR}/${Env:ARTIFACT_NAME}"
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
@@ -61,12 +65,14 @@ jobs:
         run: cargo build --verbose --target x86_64-apple-darwin --release
       - name: Build aarch64
         run: cargo build --verbose --target aarch64-apple-darwin --release
-      - name: Make Universal binary
+      - name: Create temp dir
         run: |
           mkdir -p "$TEMP_DIR"
-          lipo \
-            target/x86_64-apple-darwin/release/bose-dfu \
-            target/aarch64-apple-darwin/release/bose-dfu \
+      - name: Make Universal binary
+        run: >
+          lipo
+            target/x86_64-apple-darwin/release/bose-dfu
+            target/aarch64-apple-darwin/release/bose-dfu
             -output "$TEMP_DIR/$ARTIFACT_NAME" -create
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
