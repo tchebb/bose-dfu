@@ -85,6 +85,43 @@ grant permission for the HID device to your user. You can do this by copying
 reboot needed). If your device is untested, it won't yet have an entry in that
 file and you'll need to add one yourself.
 
+Usage
+-----
+bose-dfu has several subcommands, which are summarized in its help text:
+
+```
+bose-dfu 1.0.0
+Firmware updater for various Bose devices
+
+USAGE:
+    bose-dfu <SUBCOMMAND>
+
+OPTIONS:
+    -h, --help       Print help information
+    -V, --version    Print version information
+
+SUBCOMMANDS:
+    list         List all connected Bose HID devices (vendor ID 0x05a7)
+    info         Get information about a specific device not in DFU mode
+    enter-dfu    Put a device into DFU mode
+    leave-dfu    Take a device out of DFU mode
+    download     Write firmware to a device in DFU mode
+    file-info    Print metadata about a firmware file, no device needed
+    help         Print this message or the help of the given subcommand(s)
+```
+
+To update a device, you'll need to run at least `bose-dfu enter-dfu`, `bose-dfu
+download`, and `bose-dfu leave-dfu` in that order. The other subcommands help
+you inspect the current state of devices and update files. Notable is `info`,
+which tells you the current firmware version a device is running.
+
+Subcommands which perform an operation on a device all support arguments for
+selecting which device to talk to when multiple are connected.  You can use
+`-p` to select by USB product ID, `-s` to select by USB serial number, or both
+together. Additionally, these subcommands take the `-f`/`--force` flag, which
+has no effect for tested devices but is required to perform operations on
+untested ones.
+
 FAQ
 ---
 ### Can updating my device's firmware brick it?
