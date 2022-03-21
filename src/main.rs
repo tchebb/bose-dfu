@@ -249,7 +249,7 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path) -> Result<()> {
     let (vid, pid) = (info.vendor_id(), info.product_id());
     if !suffix.vendor_id.matches(vid) || !suffix.product_id.matches(pid) {
         bail!(
-            "This file is not for the selected device! File for {:04x}:{:04x}, device is {:04x}:{:04x}",
+            "this file is not for the selected device: file for {:04x}:{:04x}, device is {:04x}:{:04x}",
             suffix.vendor_id, suffix.product_id, vid, pid
         );
     }
