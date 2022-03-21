@@ -86,7 +86,7 @@ impl DeviceIds {
 }
 
 /// Modes a device can be in. Can be unknown.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum DeviceMode {
     Normal,
     Dfu,
@@ -104,7 +104,7 @@ impl Display for DeviceMode {
 }
 
 /// A USB vendor ID and product ID pair.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct UsbId {
     pub vid: u16,
     pub pid: u16,

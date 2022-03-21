@@ -280,13 +280,13 @@ enum DfuReportType {
     // Getting this descriptor executes DFU_GETSTATE and returns its payload.
     // Setting it executes a DFU request identified by the first byte of the
     // request data. DFU_CLRSTATUS and DFU_ABORT can be executed this way, and
-    // possibly others.
+    // possibly others too.
     StateCmd = 3,
 }
 
 /// Status codes a DFU device can return, taken from the USB DFU 1.1 spec.
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[allow(non_camel_case_types)] // Names from DFU spec
 pub enum DfuStatus {
     OK = 0x00,
@@ -333,7 +333,7 @@ impl DfuStatus {
 
 /// States a DFU device can be in, taken from the USB DFU 1.1 spec.
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[allow(non_camel_case_types)] // Names from DFU spec
 pub enum DfuState {
     appIDLE = 0,
@@ -389,7 +389,7 @@ enum DfuRequest {
     BOSE_EXIT_DFU = 0xff, // Custom, not from DFU spec
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct DfuStatusResult {
     pub status: DfuStatus,
     pub state: DfuState,
