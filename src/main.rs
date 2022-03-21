@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use bose_dfu::device_ids::{identify_device, DeviceCompat, DeviceMode, UsbId};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
 use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
 use clap::Parser;
@@ -7,24 +8,6 @@ use log::{info, warn};
 use std::io::Read;
 use std::path::Path;
 use thiserror::Error;
-
-const BOSE_VID: u16 = 0x05a7;
-
-const TESTED_NONDFU_PIDS: &[u16] = &[
-    0x40fe, // Bose Color II SoundLink
-];
-
-const TESTED_DFU_PIDS: &[u16] = &[
-    0x400d, // Bose Color II SoundLink
-];
-
-fn get_mode(pid: u16) -> Option<DeviceMode> {
-    match pid {
-        v if TESTED_NONDFU_PIDS.contains(&v) => Some(DeviceMode::Normal),
-        v if TESTED_DFU_PIDS.contains(&v) => Some(DeviceMode::Dfu),
-        _ => None,
-    }
-}
 
 #[derive(Parser, Debug)]
 #[clap(version, about, setting = clap::AppSettings::DeriveDisplayOrder)]
@@ -75,12 +58,6 @@ enum MatchError {
     MultipleDevices,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum DeviceMode {
-    Normal,
-    Dfu,
-}
-
 #[derive(Parser, Debug)]
 struct DeviceSpec {
     /// USB serial number
@@ -91,52 +68,93 @@ struct DeviceSpec {
     #[clap(short)]
     pid: Option<u16>,
 
+    /// Proceed with operation even if device is untested or might be in wrong mode.
+    #[clap(short, long)]
+    force: bool,
+
     /// DFU/normal mode (determined using product ID for known devices)
     #[clap(skip)]
     required_mode: Option<DeviceMode>,
 }
 
+#[derive(Copy, Clone, Debug)]
+struct DeviceRisks {
+    /// The device has not been tested, and bose-dfu might brick it.
+    untested: bool,
+    /// The running command needs a specific mode, and we're not sure the device is in that mode.
+    ambiguous_mode: bool,
+}
+
 impl DeviceSpec {
-    fn matches(&self, device: &DeviceInfo) -> bool {
-        if device.vendor_id() != BOSE_VID {
-            return false;
+    /// If we match the given device, return a [DeviceRisks] with details on the match. Otherwise,
+    /// return [None].
+    fn match_dev(&self, device: &DeviceInfo) -> Option<DeviceRisks> {
+        let dev_id = UsbId {
+            vid: device.vendor_id(),
+            pid: device.product_id(),
+        };
+
+        let (untested, mode) = match identify_device(dev_id) {
+            DeviceCompat::Compatible(mode) => (false, mode),
+            DeviceCompat::Untested(mode) => (true, mode),
+            DeviceCompat::Incompatible => return None,
+        };
+
+        let ambiguous_mode = match self.required_mode {
+            None => false,
+            Some(_) if mode == DeviceMode::Unknown => true,
+            Some(req_mode) if mode == req_mode => false,
+            _ => return None,
+        };
+
+        if let Some(x) = self.pid {
+            if dev_id.pid != x {
+                return None;
+            }
         }
 
         if let Some(ref x) = self.serial {
             if device.serial_number() != Some(x) {
-                return false;
+                return None;
             }
         }
 
-        if let Some(x) = self.pid {
-            if device.product_id() != x {
-                return false;
-            }
-        }
-
-        if let Some(mode) = self.required_mode {
-            // TODO: Handle unknown devices
-            if get_mode(device.product_id()) != Some(mode) {
-                return false;
-            }
-        }
-
-        true
+        Some(DeviceRisks {
+            untested,
+            ambiguous_mode,
+        })
     }
 
     fn get_device<'a>(&self, hidapi: &'a HidApi) -> Result<(HidDevice, &'a DeviceInfo)> {
-        let mut candidates = hidapi.device_list().filter(|d| self.matches(d));
+        let mut candidates = hidapi
+            .device_list()
+            .filter_map(|d| (self.match_dev(d).map(|r| (d, r))));
 
         match candidates.next() {
             None => Err(MatchError::NoDevices.into()),
-            Some(dev) => {
+            Some((dev, risks)) => {
                 if candidates.next().is_some() {
-                    Err(MatchError::MultipleDevices.into())
-                } else {
-                    dev.open_device(hidapi)
-                        .map(|open| (open, dev))
-                        .context("failed to open device; do you have permission?")
+                    return Err(MatchError::MultipleDevices.into());
                 }
+
+                if risks.untested {
+                    warn!("Device has NOT BEEN TESTED with bose-dfu; by proceeding, you risk damaging it");
+                }
+
+                if risks.ambiguous_mode {
+                    warn!(
+                        "Cannot determine device's mode; command may damage devices not in {} mode",
+                        self.required_mode.unwrap()
+                    );
+                }
+
+                if (risks.untested || risks.ambiguous_mode) && !self.force {
+                    bail!("to use an untested or ambiguous-mode device, you must pass -f");
+                }
+
+                dev.open_device(hidapi)
+                    .map(|open| (open, dev))
+                    .context("failed to open device; do you have permission?")
             }
         }
     }
@@ -218,25 +236,23 @@ fn main() -> Result<()> {
 }
 
 fn list_cmd(hidapi: &HidApi) {
-    let all_spec = DeviceSpec {
-        serial: None,
-        pid: None,
-        required_mode: None,
-    };
-    for dev in hidapi.device_list().filter(|d| all_spec.matches(d)) {
-        let support_status = match get_mode(dev.product_id()) {
-            Some(DeviceMode::Normal) => "not in DFU mode, known device",
-            Some(DeviceMode::Dfu) => "in DFU mode, known device",
-            None => "unknown device, proceed at your own risk",
+    for dev in hidapi.device_list() {
+        let dev_id = UsbId {
+            vid: dev.vendor_id(),
+            pid: dev.product_id(),
         };
 
+        let state = identify_device(dev_id);
+        if let DeviceCompat::Incompatible = state {
+            continue;
+        }
+
         println!(
-            "{:04x}:{:04x} {} {} [{}]",
-            dev.vendor_id(),
-            dev.product_id(),
+            "{} {} {} [{}]",
+            dev_id,
             dev.serial_number().unwrap_or("INVALID"),
             dev.product_string().unwrap_or("INVALID"),
-            support_status,
+            state,
         );
     }
 }
