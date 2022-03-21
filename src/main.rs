@@ -283,16 +283,16 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path, wildcard_fw: bo
 
     if suffix.vendor_id.0.is_none() || suffix.product_id.0.is_none() {
         warn!(
-            "DFU file's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
+            "Update's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
             suffix.vendor_id, suffix.product_id
         );
 
         if !wildcard_fw {
             bail!("to write firmware with an incomplete USB ID, you must pass -w");
         }
+    } else {
+        info!("Update verified to be for selected device");
     }
-
-    info!("Update verified to be for selected device");
 
     ensure_idle(dev)?;
 
