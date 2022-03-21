@@ -12,19 +12,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install libudev headers (for hidapi crate)
-      run: |
-        sudo apt-get update
-        sudo apt-get install libudev-dev
-    - name: Build
-      run: cargo build --verbose
-    - name: Run clippy
-      run: cargo clippy -- -D warnings
+      - uses: actions/checkout@v2
+      - name: Install libudev headers (for hidapi crate)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libudev-dev
+      - name: Build
+        run: cargo build --verbose
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
 
   check-formatting:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Check formatting
-      run: cargo fmt --check
+      - uses: actions/checkout@v2
+      - name: Check formatting
+        run: cargo fmt --check
