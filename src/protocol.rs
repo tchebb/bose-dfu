@@ -191,8 +191,10 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
 
 /// Put a device running the normal firmware into DFU mode. `device` must NOT be in DFU mode.
 pub fn enter_dfu(device: &HidDevice) -> Result<(), Error> {
+    const ENTER_DFU_REPORT_ID: u8 = 1;
+
     device
-        .send_feature_report(&[1, 0xb0, 0x07]) // Magic
+        .send_feature_report(&[ENTER_DFU_REPORT_ID, 0xb0, 0x07]) // Magic
         .map_err(|e| Error::DeviceIoError {
             source: e,
             action: "entering DFU mode",

@@ -83,8 +83,10 @@ pub fn parse(file: &mut (impl Read + Seek)) -> Result<SuffixInfo, Error> {
 /// Compute the CRC used by USB DFU 1.1 over all bytes in the given file. Does not strip CRC field
 /// from suffix automatically.
 fn compute_crc(file: &mut impl Read) -> std::io::Result<u32> {
+    const CHUNK_SIZE: usize = 4096; // Chosen fairly arbitrarily
+
     let mut hasher = crc32fast::Hasher::new();
-    let mut buf = [0u8; 4096];
+    let mut buf = [0u8; CHUNK_SIZE];
     loop {
         let len = file.read(&mut buf)?;
         if len == 0 {
