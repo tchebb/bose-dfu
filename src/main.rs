@@ -163,7 +163,7 @@ fn list_cmd(hidapi: &HidApi) {
             pid: dev.product_id(),
         };
 
-        let state = identify_device(dev_id);
+        let state = identify_device(dev_id, dev.usage_page());
         if let DeviceCompat::Incompatible = state {
             continue;
         }
@@ -227,7 +227,7 @@ impl DeviceSpec {
             pid: device.product_id(),
         };
 
-        let (untested, mode) = match identify_device(dev_id) {
+        let (untested, mode) = match identify_device(dev_id, device.usage_page()) {
             DeviceCompat::Compatible(mode) => (false, mode),
             DeviceCompat::Untested(mode) => (true, mode),
             DeviceCompat::Incompatible => return None,

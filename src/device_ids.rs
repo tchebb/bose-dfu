@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 const BOSE_VID: u16 = 0x05a7;
+const BOSE_HID_USAGE_PAGE: u16 = 0xff00;
 
 const COMPATIBLE_DEVICES: &[DeviceIds] = &[
     // Bose Color II SoundLink
@@ -21,7 +22,13 @@ const fn bose_dev(normal_pid: u16, dfu_pid: u16) -> DeviceIds {
 }
 
 /// Find a device's compatibility and mode based on its USB ID.
-pub fn identify_device(id: UsbId) -> DeviceCompat {
+pub fn identify_device(id: UsbId, usage_page: u16) -> DeviceCompat {
+    // On macOS, Windows, and Linux/hidraw, each usage page is exposed as a separate device and we
+    // only want the DFU one. On Linux/libusb, all pages are one device and usage_page() is 0.
+    if ![0, BOSE_HID_USAGE_PAGE].contains(&usage_page) {
+        return DeviceCompat::Incompatible;
+    }
+
     // First, see if the device is known to us.
     for candidate in COMPATIBLE_DEVICES {
         if let Some(mode) = candidate.match_id(id) {
