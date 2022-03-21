@@ -248,15 +248,17 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path) -> Result<()> {
 
     let (vid, pid) = (info.vendor_id(), info.product_id());
     if !suffix.vendor_id.matches(vid) || !suffix.product_id.matches(pid) {
-        bail!("This file is not for the selected device! File for {:04x}:{:04x}, device is {:04x}:{:04x}",
-        suffix.vendor_id, suffix.product_id, vid, pid)
+        bail!(
+            "This file is not for the selected device! File for {:04x}:{:04x}, device is {:04x}:{:04x}",
+            suffix.vendor_id, suffix.product_id, vid, pid
+        );
     }
 
     if suffix.vendor_id.0.is_none() || suffix.product_id.0.is_none() {
         warn!(
             "DFU file's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
             suffix.vendor_id, suffix.product_id
-        )
+        );
         // TODO: Require a "force" flag to proceed?
     }
 
