@@ -79,7 +79,7 @@ struct DeviceSpec {
     #[clap(short, long)]
     force: bool,
 
-    /// DFU/normal mode (determined using product ID for known devices)
+    /// Required device mode (derived automatically from chosen subcommand)
     #[clap(skip)]
     required_mode: Option<DeviceMode>,
 }
