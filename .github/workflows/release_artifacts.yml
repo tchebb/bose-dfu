@@ -69,10 +69,10 @@ jobs:
         run: |
           mkdir -p "$TEMP_DIR"
       - name: Make Universal binary
-        run: >
-          lipo
-            target/x86_64-apple-darwin/release/bose-dfu
-            target/aarch64-apple-darwin/release/bose-dfu
+        run: |
+          lipo \
+            target/x86_64-apple-darwin/release/bose-dfu \
+            target/aarch64-apple-darwin/release/bose-dfu \
             -output "$TEMP_DIR/$ARTIFACT_NAME" -create
       - name: Add artifact to release
         uses: softprops/action-gh-release@v1
