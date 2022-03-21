@@ -40,6 +40,9 @@ enum Opt {
 
         #[clap(parse(from_os_str))]
         file: std::path::PathBuf,
+
+        #[clap(short, long)]
+        wildcard_fw: bool,
     },
 
     /// Print metadata about a firmware file, no device needed
@@ -210,13 +213,17 @@ fn main() -> Result<()> {
             };
             leave_dfu(&spec.get_device(&api)?.0)?;
         }
-        Opt::Download { spec, file } => {
+        Opt::Download {
+            spec,
+            file,
+            wildcard_fw,
+        } => {
             let spec = DeviceSpec {
                 required_mode: Some(DeviceMode::Dfu),
                 ..spec
             };
             let (dev, info) = spec.get_device(&api)?;
-            download_cmd(&dev, info, &file)?
+            download_cmd(&dev, info, &file, wildcard_fw)?
         }
         Opt::FileInfo { file: path } => {
             let mut file = std::fs::File::open(path)?;
@@ -261,7 +268,7 @@ fn list_cmd(hidapi: &HidApi) {
     }
 }
 
-fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path) -> Result<()> {
+fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path, wildcard_fw: bool) -> Result<()> {
     let mut file = std::fs::File::open(path)?;
     let suffix = parse_dfu_file(&mut file)?;
     suffix.ensure_valid_crc()?;
@@ -279,7 +286,10 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path) -> Result<()> {
             "DFU file's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
             suffix.vendor_id, suffix.product_id
         );
-        // TODO: Require a "force" flag to proceed?
+
+        if !wildcard_fw {
+            bail!("to write firmware with an incomplete USB ID, you must pass -w");
+        }
     }
 
     info!("Update verified to be for selected device");
