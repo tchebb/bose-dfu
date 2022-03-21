@@ -273,18 +273,24 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path, wildcard_fw: bo
     let suffix = parse_dfu_file(&mut file)?;
     suffix.ensure_valid_crc()?;
 
-    let (vid, pid) = (info.vendor_id(), info.product_id());
-    if !suffix.vendor_id.matches(vid) || !suffix.product_id.matches(pid) {
+    let dev_id = UsbId {
+        vid: info.vendor_id(),
+        pid: info.product_id(),
+    };
+
+    if !suffix.vendor_id.matches(dev_id.vid) || !suffix.product_id.matches(dev_id.pid) {
         bail!(
-            "this file is not for the selected device: file for {:04x}:{:04x}, device is {:04x}:{:04x}",
-            suffix.vendor_id, suffix.product_id, vid, pid
+            "this file is not for the selected device: file for {:04x}:{:04x}, device is {}",
+            suffix.vendor_id,
+            suffix.product_id,
+            dev_id
         );
     }
 
     if suffix.vendor_id.0.is_none() || suffix.product_id.0.is_none() {
         warn!(
             "Update's USB ID ({:04x}:{:04x}) is incomplete; can't guarantee it's for this device",
-            suffix.vendor_id, suffix.product_id
+            suffix.vendor_id, suffix.product_id,
         );
 
         if !wildcard_fw {
