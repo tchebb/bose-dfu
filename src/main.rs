@@ -58,14 +58,18 @@ enum MatchError {
     MultipleDevices,
 }
 
+fn parse_pid(src: &str) -> Result<u16, std::num::ParseIntError> {
+    u16::from_str_radix(src, 16)
+}
+
 #[derive(Parser, Debug)]
 struct DeviceSpec {
     /// USB serial number
     #[clap(short)]
     serial: Option<String>,
 
-    /// Product ID (vendor ID is always matched against Bose's, 0x05a7)
-    #[clap(short)]
+    /// USB product ID as an unprefixed hex string (only matches vendor ID 05a7)
+    #[clap(short, parse(try_from_str = parse_pid))]
     pid: Option<u16>,
 
     /// Proceed with operation even if device is untested or might be in wrong mode.
