@@ -52,19 +52,6 @@ enum Opt {
     },
 }
 
-#[derive(Error, Debug)]
-enum MatchError {
-    #[error("no devices match specification")]
-    NoDevices,
-
-    #[error("multiple devices match specification")]
-    MultipleDevices,
-}
-
-fn parse_pid(src: &str) -> Result<u16, std::num::ParseIntError> {
-    u16::from_str_radix(src, 16)
-}
-
 #[derive(Parser, Debug)]
 struct DeviceSpec {
     /// USB serial number
@@ -84,87 +71,8 @@ struct DeviceSpec {
     required_mode: Option<DeviceMode>,
 }
 
-#[derive(Copy, Clone, Debug)]
-struct DeviceRisks {
-    /// The device has not been tested, and bose-dfu might brick it.
-    untested: bool,
-    /// The running command needs a specific mode, and we're not sure the device is in that mode.
-    ambiguous_mode: bool,
-}
-
-impl DeviceSpec {
-    /// If we match the given device, return a [DeviceRisks] with details on the match. Otherwise,
-    /// return [None].
-    fn match_dev(&self, device: &DeviceInfo) -> Option<DeviceRisks> {
-        let dev_id = UsbId {
-            vid: device.vendor_id(),
-            pid: device.product_id(),
-        };
-
-        let (untested, mode) = match identify_device(dev_id) {
-            DeviceCompat::Compatible(mode) => (false, mode),
-            DeviceCompat::Untested(mode) => (true, mode),
-            DeviceCompat::Incompatible => return None,
-        };
-
-        let ambiguous_mode = match self.required_mode {
-            None => false,
-            Some(_) if mode == DeviceMode::Unknown => true,
-            Some(req_mode) if mode == req_mode => false,
-            _ => return None,
-        };
-
-        if let Some(x) = self.pid {
-            if dev_id.pid != x {
-                return None;
-            }
-        }
-
-        if let Some(ref x) = self.serial {
-            if device.serial_number() != Some(x) {
-                return None;
-            }
-        }
-
-        Some(DeviceRisks {
-            untested,
-            ambiguous_mode,
-        })
-    }
-
-    fn get_device<'a>(&self, hidapi: &'a HidApi) -> Result<(HidDevice, &'a DeviceInfo)> {
-        let mut candidates = hidapi
-            .device_list()
-            .filter_map(|d| (self.match_dev(d).map(|r| (d, r))));
-
-        match candidates.next() {
-            None => Err(MatchError::NoDevices.into()),
-            Some((dev, risks)) => {
-                if candidates.next().is_some() {
-                    return Err(MatchError::MultipleDevices.into());
-                }
-
-                if risks.untested {
-                    warn!("Device has NOT BEEN TESTED with bose-dfu; by proceeding, you risk damaging it");
-                }
-
-                if risks.ambiguous_mode {
-                    warn!(
-                        "Cannot determine device's mode; command may damage devices not in {} mode",
-                        self.required_mode.unwrap()
-                    );
-                }
-
-                if (risks.untested || risks.ambiguous_mode) && !self.force {
-                    bail!("to use an untested or ambiguous-mode device, you must pass -f");
-                }
-
-                dev.open_device(hidapi)
-                    .map(|open| (open, dev))
-                    .context("failed to open device; do you have permission?")
-            }
-        }
-    }
+fn parse_pid(src: &str) -> Result<u16, std::num::ParseIntError> {
+    u16::from_str_radix(src, 16)
 }
 
 fn main() -> Result<()> {
@@ -306,4 +214,96 @@ fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path, wildcard_fw: bo
     download(dev, &mut file.by_ref().take(suffix.payload_length))?;
 
     Ok(())
+}
+
+impl DeviceSpec {
+    /// If we match the given device, return a [DeviceRisks] with details on the match. Otherwise,
+    /// return [None].
+    fn match_dev(&self, device: &DeviceInfo) -> Option<DeviceRisks> {
+        let dev_id = UsbId {
+            vid: device.vendor_id(),
+            pid: device.product_id(),
+        };
+
+        let (untested, mode) = match identify_device(dev_id) {
+            DeviceCompat::Compatible(mode) => (false, mode),
+            DeviceCompat::Untested(mode) => (true, mode),
+            DeviceCompat::Incompatible => return None,
+        };
+
+        let ambiguous_mode = match self.required_mode {
+            None => false,
+            Some(_) if mode == DeviceMode::Unknown => true,
+            Some(req_mode) if mode == req_mode => false,
+            _ => return None,
+        };
+
+        if let Some(x) = self.pid {
+            if dev_id.pid != x {
+                return None;
+            }
+        }
+
+        if let Some(ref x) = self.serial {
+            if device.serial_number() != Some(x) {
+                return None;
+            }
+        }
+
+        Some(DeviceRisks {
+            untested,
+            ambiguous_mode,
+        })
+    }
+
+    fn get_device<'a>(&self, hidapi: &'a HidApi) -> Result<(HidDevice, &'a DeviceInfo)> {
+        let mut candidates = hidapi
+            .device_list()
+            .filter_map(|d| (self.match_dev(d).map(|r| (d, r))));
+
+        match candidates.next() {
+            None => Err(MatchError::NoDevices.into()),
+            Some((dev, risks)) => {
+                if candidates.next().is_some() {
+                    return Err(MatchError::MultipleDevices.into());
+                }
+
+                if risks.untested {
+                    warn!("Device has NOT BEEN TESTED with bose-dfu; by proceeding, you risk damaging it");
+                }
+
+                if risks.ambiguous_mode {
+                    warn!(
+                        "Cannot determine device's mode; command may damage devices not in {} mode",
+                        self.required_mode.unwrap()
+                    );
+                }
+
+                if (risks.untested || risks.ambiguous_mode) && !self.force {
+                    bail!("to use an untested or ambiguous-mode device, you must pass -f");
+                }
+
+                dev.open_device(hidapi)
+                    .map(|open| (open, dev))
+                    .context("failed to open device; do you have permission?")
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct DeviceRisks {
+    /// The device has not been tested, and bose-dfu might brick it.
+    untested: bool,
+    /// The running command needs a specific mode, and we're not sure the device is in that mode.
+    ambiguous_mode: bool,
+}
+
+#[derive(Error, Debug)]
+enum MatchError {
+    #[error("no devices match specification")]
+    NoDevices,
+
+    #[error("multiple devices match specification")]
+    MultipleDevices,
 }

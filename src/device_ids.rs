@@ -20,16 +20,42 @@ const fn bose_dev(normal_pid: u16, dfu_pid: u16) -> DeviceIds {
     }
 }
 
-/// A USB vendor ID and product ID pair.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct UsbId {
-    pub vid: u16,
-    pub pid: u16,
+/// Find a device's compatibility and mode based on its USB ID.
+pub fn identify_device(id: UsbId) -> DeviceCompat {
+    // First, see if the device is known to us.
+    for candidate in COMPATIBLE_DEVICES {
+        if let Some(mode) = candidate.match_id(id) {
+            return DeviceCompat::Compatible(mode);
+        }
+    }
+
+    // If not, mark it as untested if it has Bose's VID.
+    if id.vid == BOSE_VID {
+        DeviceCompat::Untested(DeviceMode::Unknown)
+    } else {
+        DeviceCompat::Incompatible
+    }
 }
 
-impl Display for UsbId {
+/// Compatibility of a device, with detected mode if applicable.
+pub enum DeviceCompat {
+    /// Known to speak the Bose DFU protocol. Usable by default.
+    Compatible(DeviceMode),
+    /// May speak the Bose DFU protocol but has not been tested. Usable with "force" flag. Mode
+    /// currently always [DeviceMode::Unknown], but that may change if we find a non-PID way to
+    /// identify different modes (e.g. parsing the HID descriptor).
+    Untested(DeviceMode),
+    /// Definitely does not speak the Bose DFU protocol. Treated as if it doesn't exist.
+    Incompatible,
+}
+
+impl Display for DeviceCompat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:04x}:{:04x}", self.vid, self.pid)
+        match self {
+            DeviceCompat::Compatible(mode) => write!(f, "compatible device in {} mode", mode),
+            DeviceCompat::Untested(mode) => write!(f, "UNTESTED device in {} mode", mode),
+            DeviceCompat::Incompatible => write!(f, "incompatible device"),
+        }
     }
 }
 
@@ -70,41 +96,15 @@ impl Display for DeviceMode {
     }
 }
 
-/// Compatibility of a device, with detected mode if applicable.
-pub enum DeviceCompat {
-    /// Known to speak the Bose DFU protocol. Usable by default.
-    Compatible(DeviceMode),
-    /// May speak the Bose DFU protocol but has not been tested. Usable with "force" flag. Mode
-    /// currently always [DeviceMode::Unknown], but that may change if we find a non-PID way to
-    /// identify different modes (e.g. parsing the HID descriptor).
-    Untested(DeviceMode),
-    /// Definitely does not speak the Bose DFU protocol. Treated as if it doesn't exist.
-    Incompatible,
+/// A USB vendor ID and product ID pair.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct UsbId {
+    pub vid: u16,
+    pub pid: u16,
 }
 
-impl Display for DeviceCompat {
+impl Display for UsbId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            DeviceCompat::Compatible(mode) => write!(f, "compatible device in {} mode", mode),
-            DeviceCompat::Untested(mode) => write!(f, "UNTESTED device in {} mode", mode),
-            DeviceCompat::Incompatible => write!(f, "incompatible device"),
-        }
-    }
-}
-
-/// Find a device's compatibility and mode based on its USB ID.
-pub fn identify_device(id: UsbId) -> DeviceCompat {
-    // First, see if the device is known to us.
-    for candidate in COMPATIBLE_DEVICES {
-        if let Some(mode) = candidate.match_id(id) {
-            return DeviceCompat::Compatible(mode);
-        }
-    }
-
-    // If not, mark it as untested if it has Bose's VID.
-    if id.vid == BOSE_VID {
-        DeviceCompat::Untested(DeviceMode::Unknown)
-    } else {
-        DeviceCompat::Incompatible
+        write!(f, "{:04x}:{:04x}", self.vid, self.pid)
     }
 }
