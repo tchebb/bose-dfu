@@ -1,8 +1,13 @@
 [package]
 name = "bose-dfu"
-description = "Firmware updater for various Bose devices"
 version = "0.1.0"
+license = "MIT"
+
+description = "Firmware updater for various Bose devices"
 authors = ["Thomas Hebb <tommyhebb@gmail.com>"]
+repository = "https://github.com/tchebb/bose-dfu"
+categories = ["command-line-utilities"]
+
 edition = "2021"
 
 [dependencies]
