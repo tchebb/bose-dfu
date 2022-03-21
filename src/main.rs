@@ -62,7 +62,7 @@ struct DeviceSpec {
     #[clap(short, parse(try_from_str = parse_pid))]
     pid: Option<u16>,
 
-    /// Proceed with operation even if device is untested or might be in wrong mode.
+    /// Proceed with operation even if device is untested or might be in wrong mode
     #[clap(short, long)]
     force: bool,
 
@@ -146,7 +146,7 @@ fn main() -> Result<()> {
             match suffix.has_valid_crc() {
                 true => println!("CRC: valid ({:#010x})", suffix.expected_crc),
                 false => println!(
-                    "CRC: INVALID (expected {:#010x}, actual {:#010x}",
+                    "CRC: INVALID (expected {:#010x}, actual {:#010x})",
                     suffix.expected_crc, suffix.actual_crc
                 ),
             }
@@ -271,7 +271,7 @@ impl DeviceSpec {
                 }
 
                 if risks.untested {
-                    warn!("Device has NOT BEEN TESTED with bose-dfu; by proceeding, you risk damaging it");
+                    warn!("Device has not been tested with bose-dfu; by proceeding, you risk damaging it");
                 }
 
                 if risks.ambiguous_mode {

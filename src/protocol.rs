@@ -471,10 +471,10 @@ pub enum Error {
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum ProtocolError {
-    #[error("device reported state ({0}) which is not in the DFU spec")]
+    #[error("device reported state ({0}) that is not in the DFU spec")]
     UnknownState(u8),
 
-    #[error("device reported status ({0}) which is not in the DFU spec")]
+    #[error("device reported status ({0}) that is not in the DFU spec")]
     UnknownStatus(u8),
 
     #[error("device reported an error: {0:?} ({})", .0.error_str())]
@@ -486,7 +486,7 @@ pub enum ProtocolError {
         actual: DfuState,
     },
 
-    #[error("don't know how to safely leave initial state {0:?}, please re-enter DFU mode")]
+    #[error("don't know how to safely leave initial state {0:?}; please re-enter DFU mode")]
     BadInitialState(DfuState),
 
     #[error("file too large: overflowed 16-bit block number while sending")]
@@ -495,6 +495,6 @@ pub enum ProtocolError {
     #[error("device returned invalid UTF-8 string")]
     InvalidString(#[from] std::str::Utf8Error),
 
-    #[error("feature report from device contained {actual} bytes, expected {expected}")]
+    #[error("feature report from device was {actual} bytes, expected at least {expected}")]
     ReportTooShort { expected: usize, actual: usize },
 }
