@@ -156,9 +156,8 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
     // 1 byte report ID + 2 bytes field ID + 1 byte NUL
     let mut request_report = [0u8; 1 + 2 + 1];
 
-    // Packet captures indicate that "lc" is also a valid field type in some situations. "lc" is
-    // the only one that's written without being read, and it always precedes a "pl" read. When
-    // I've tried to send it, though, I've just gotten errors.
+    // Packet captures indicate that "lc" is also a valid field type for some devices, but on mine
+    // it always returns a bus error (both when I send it and when the official updater does).
     request_report[0] = INFO_REPORT_ID;
     request_report[1..3].copy_from_slice(match field {
         DeviceModel => b"pl",
