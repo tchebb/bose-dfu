@@ -29,7 +29,7 @@ pub fn download(device: &HidDevice, file: &mut impl Read) -> Result<(), Error> {
 
         // Construct header
         let mut cursor = std::io::Cursor::new(&mut report);
-        cursor.write_u8(DfuReportType::UploadDownload as _).unwrap();
+        cursor.write_u8(DfuReportId::UploadDownload as _).unwrap();
         cursor.write_u8(DfuRequest::DFU_DNLOAD as _).unwrap();
         cursor.write_u16::<LE>(block_num).unwrap();
         cursor.write_u16::<LE>(data_size as u16).unwrap();
@@ -100,7 +100,7 @@ pub fn upload(device: &HidDevice, file: &mut impl Write) -> Result<(), Error> {
         // Zero out the report each time through to protect against hidapi bugs.
         report.fill(0u8);
 
-        report[0] = DfuReportType::UploadDownload as u8;
+        report[0] = DfuReportId::UploadDownload as u8;
         let report_size = map_gfr(
             device.get_feature_report(&mut report),
             1 + XFER_HEADER_SIZE,
@@ -204,10 +204,7 @@ pub fn enter_dfu(device: &HidDevice) -> Result<(), Error> {
 /// Switch back to the normal firmware. `device` must be in DFU mode.
 pub fn leave_dfu(device: &HidDevice) -> Result<(), Error> {
     device
-        .send_feature_report(&[
-            DfuReportType::StateCmd as u8,
-            DfuRequest::BOSE_EXIT_DFU as u8,
-        ])
+        .send_feature_report(&[DfuReportId::StateCmd as u8, DfuRequest::BOSE_EXIT_DFU as u8])
         .map_err(|e| Error::DeviceIoError {
             source: e,
             action: "leaving DFU mode",
@@ -229,7 +226,7 @@ pub fn ensure_idle(device: &HidDevice) -> Result<(), Error> {
             );
 
             device
-                .send_feature_report(&[DfuReportType::StateCmd as u8, DfuRequest::DFU_ABORT as u8])
+                .send_feature_report(&[DfuReportId::StateCmd as u8, DfuRequest::DFU_ABORT as u8])
                 .map_err(|e| Error::DeviceIoError {
                     source: e,
                     action: "sending DFU_ABORT",
@@ -244,7 +241,7 @@ pub fn ensure_idle(device: &HidDevice) -> Result<(), Error> {
 
             device
                 .send_feature_report(&[
-                    DfuReportType::StateCmd as u8,
+                    DfuReportId::StateCmd as u8,
                     DfuRequest::DFU_CLRSTATUS as u8,
                 ])
                 .map_err(|e| Error::DeviceIoError {
@@ -262,7 +259,7 @@ pub fn ensure_idle(device: &HidDevice) -> Result<(), Error> {
 }
 
 #[repr(u8)]
-enum DfuReportType {
+enum DfuReportId {
     // Getting this descriptor executes DFU_UPLOAD, returning its payload
     // appended to a five-byte header containing the 16-bit, little-endian
     // payload length followed by three unknown bytes ([0x00, 0x00, 0x5d] in
@@ -353,7 +350,7 @@ impl DfuState {
     #[allow(dead_code)]
     fn read_from_device(device: &HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 1]; // 1 byte report ID + 1 byte state
-        report[0] = DfuReportType::StateCmd as u8;
+        report[0] = DfuReportId::StateCmd as u8;
         map_gfr(
             device.get_feature_report(&mut report),
             report.len(),
@@ -399,7 +396,7 @@ struct DfuStatusResult {
 impl DfuStatusResult {
     fn read_from_device(device: &HidDevice) -> Result<Self, Error> {
         let mut report = [0u8; 1 + 6]; // 1 byte report ID + 6 bytes status
-        report[0] = DfuReportType::GetStatus as u8;
+        report[0] = DfuReportId::GetStatus as u8;
         map_gfr(
             device.get_feature_report(&mut report),
             report.len(),
