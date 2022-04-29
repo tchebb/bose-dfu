@@ -1,14 +1,23 @@
 For users
 =========
-bose-dfu is an open-source implementation of Bose's USB update protocol for
-certain Bose devices that take updates in `.dfu` format. Using this tool, you
-can enter and leave firmware update ("DFU") mode on compatible devices. When in
-DFU mode, you can write a device's firmware, including to downgrade it to an
-earlier version.
+bose-dfu is an open-source, command-line firmware update tool for certain Bose
+speakers and headphones. Unlike Bose's [official updater][btu], bose-dfu
+
+ - runs on Windows, macOS, Linux, and any other OS supported by Rust and
+   [HIDAPI][hidapi]
+ - can downgrade firmware as well as upgrade it
+ - doesn't rely on a web service to run
+
+Using this tool, you can enter and leave firmware update ("DFU") mode on
+compatible devices connected via USB. After putting a device in DFU mode, you
+can write new firmware to it.
 
 See the next section for a list of devices known to be compatible and the one
-after that for instructions on how to find firmware images for your device,
-which can tell you if an untested device uses the `.dfu` format.
+after that for instructions on how to find firmware images for your device
+(which can also help you determine compatibility).
+
+[hidapi]: https://github.com/libusb/hidapi
+[btu]: https://btu.bose.com/
 
 Tested devices
 --------------
@@ -156,7 +165,6 @@ As such, I have not written a formal protocol description for Bose DFU. The USB
 DFU specification, in combination with this tool's source code and comments
 therein, should sufficiently document the protocol.
 
-[btu]: https://btu.bose.com/
 [dfu-spec]: https://usb.org/sites/default/files/DFU_1.1.pdf
 [hid-spec]: https://www.usb.org/sites/default/files/hid1_11.pdf
 
