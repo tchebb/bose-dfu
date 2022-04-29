@@ -51,14 +51,15 @@ using `bose-dfu list`, and match its USB PID (the part of the ID after the
 colon) against a `<PRODUCT>` element in `lookup.xml`.
 
 ### Via unofficial archive
-The [bosefirmware](https://github.com/bosefirmware) GitHub user maintains
-repositories archiving old firmwares for various lines of Bose devices. Several
-of these repositories, most notably [ced][ced], contain `.dfu` files.
+The [bosefirmware][unofficial-user] GitHub user maintains repositories
+archiving old firmwares for various lines of Bose devices. Several of these
+repositories, most notably [ced][unofficial-repo], contain `.dfu` files.
 
 I am not affiliated with this user and do not guarantee the authenticity or
 accuracy of the files their repositories contain.
 
-[ced]: https://github.com/bosefirmware/ced
+[unofficial-user]: https://github.com/libusb/hidapi
+[unofficial-repo]: https://github.com/bosefirmware/ced
 
 Installation
 ------------
