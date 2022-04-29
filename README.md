@@ -67,7 +67,7 @@ repositories, most notably [ced][unofficial-repo], contain `.dfu` files.
 I am not affiliated with this user and do not guarantee the authenticity or
 accuracy of the files their repositories contain.
 
-[unofficial-user]: https://github.com/libusb/hidapi
+[unofficial-user]: https://github.com/bosefirmware
 [unofficial-repo]: https://github.com/bosefirmware/ced
 
 Installation
