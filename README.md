@@ -33,6 +33,13 @@ device**.  bose-dfu will warn you before it operates on an untested device. If
 you successfully use bose-dfu with such a device, please open a pull request to
 add it to the list.
 
+Incompatible devices
+--------------------
+The following devices are known not to work with bose-dfu because they use a
+substantially different update protocol:
+
+ - Noise Cancelling Headphones 700 (tchebb/bose-dfu#1)
+
 Obtaining firmware
 ------------------
 No firmware images are included with this tool, so you'll have to obtain those
