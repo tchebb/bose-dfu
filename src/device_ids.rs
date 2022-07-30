@@ -8,6 +8,12 @@ const COMPATIBLE_DEVICES: &[DeviceIds] = &[
     bose_dev(0x40fe, 0x400d),
 ];
 
+// Use UsbId instead of DeviceIds since some incompatible devices don't have a concept of DFU mode.
+const INCOMPATIBLE_DEVICES: &[UsbId] = &[
+    // Bose Noise Cancelling Headphones 700
+    bose_pid(0x40fc),
+];
+
 const fn bose_dev(normal_pid: u16, dfu_pid: u16) -> DeviceIds {
     DeviceIds {
         normal_mode: UsbId {
@@ -19,6 +25,10 @@ const fn bose_dev(normal_pid: u16, dfu_pid: u16) -> DeviceIds {
             pid: dfu_pid,
         },
     }
+}
+
+const fn bose_pid(pid: u16) -> UsbId {
+    UsbId { vid: BOSE_VID, pid }
 }
 
 /// Find a device's compatibility and mode based on its USB ID.
@@ -34,6 +44,11 @@ pub fn identify_device(id: UsbId, usage_page: u16) -> DeviceCompat {
         if let Some(mode) = candidate.match_id(id) {
             return DeviceCompat::Compatible(mode);
         }
+    }
+
+    // Next, see if it's known to be incompatible.
+    if INCOMPATIBLE_DEVICES.contains(&id) {
+        return DeviceCompat::Incompatible;
     }
 
     // If not, mark it as untested if it has Bose's VID.
