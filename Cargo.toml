@@ -22,7 +22,7 @@ crc32fast = "1.2"
 
 # Only required for binary
 anyhow = "1.0"
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "4.0", features = ["derive", "wrap_help"] }
 env_logger = "0.9"
 
 [profile.release]

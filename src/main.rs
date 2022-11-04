@@ -10,44 +10,42 @@ use std::path::Path;
 use thiserror::Error;
 
 #[derive(Parser, Debug)]
-#[clap(version, about, setting = clap::AppSettings::DeriveDisplayOrder)]
+#[command(version, about)]
 enum Opt {
     /// List all connected Bose HID devices (vendor ID 0x05a7)
     List,
 
     /// Get information about a specific device not in DFU mode
     Info {
-        #[clap(flatten)]
+        #[command(flatten)]
         spec: DeviceSpec,
     },
 
     /// Put a device into DFU mode
     EnterDfu {
-        #[clap(flatten)]
+        #[command(flatten)]
         spec: DeviceSpec,
     },
 
     /// Take a device out of DFU mode
     LeaveDfu {
-        #[clap(flatten)]
+        #[command(flatten)]
         spec: DeviceSpec,
     },
 
     /// Write firmware to a device in DFU mode
     Download {
-        #[clap(flatten)]
+        #[command(flatten)]
         spec: DeviceSpec,
 
-        #[clap(parse(from_os_str))]
         file: std::path::PathBuf,
 
-        #[clap(short, long)]
+        #[arg(short, long)]
         wildcard_fw: bool,
     },
 
     /// Print metadata about a firmware file, no device needed
     FileInfo {
-        #[clap(parse(from_os_str))]
         file: std::path::PathBuf,
     },
 }
@@ -55,19 +53,19 @@ enum Opt {
 #[derive(Parser, Debug)]
 struct DeviceSpec {
     /// USB serial number
-    #[clap(short)]
+    #[arg(short)]
     serial: Option<String>,
 
     /// USB product ID as an unprefixed hex string (only matches vendor ID 05a7)
-    #[clap(short, parse(try_from_str = parse_pid))]
+    #[arg(short, value_parser = parse_pid)]
     pid: Option<u16>,
 
     /// Proceed with operation even if device is untested or might be in wrong mode
-    #[clap(short, long)]
+    #[arg(short, long)]
     force: bool,
 
     /// Required device mode (derived automatically from chosen subcommand)
-    #[clap(skip)]
+    #[arg(skip)]
     required_mode: Option<DeviceMode>,
 }
 
