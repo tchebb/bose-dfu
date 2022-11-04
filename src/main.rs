@@ -45,9 +45,7 @@ enum Opt {
     },
 
     /// Print metadata about a firmware file, no device needed
-    FileInfo {
-        file: std::path::PathBuf,
-    },
+    FileInfo { file: std::path::PathBuf },
 }
 
 #[derive(Parser, Debug)]
