@@ -63,12 +63,12 @@ pub fn parse(file: &mut (impl Read + Seek)) -> Result<SuffixInfo, Error> {
     }
 
     // CRC is over all but the last 4 bytes, which hold the expected CRC.
-    file.seek(SeekFrom::Start(0))?;
+    file.rewind()?;
     let actual_crc = compute_crc(&mut file.take(file_len - 4))?;
     let expected_crc = BE::read_u32(&suffix[0..4]);
 
     // Reset cursor so caller can read the file's data.
-    file.seek(SeekFrom::Start(0))?;
+    file.rewind()?;
 
     Ok(SuffixInfo {
         vendor_id: BE::read_u16(&suffix[10..12]).into(),
