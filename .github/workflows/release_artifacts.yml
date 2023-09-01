@@ -12,7 +12,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_NAME: bose-dfu-${{ github.ref_name}}-linux-x86_64
+      ARTIFACT_NAME: bose-dfu-${{ github.ref_name }}-linux-x86_64
     steps:
       - uses: actions/checkout@v2
       - name: Install libudev headers (for hidapi crate)
@@ -35,7 +35,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      ARTIFACT_NAME: bose-dfu-${{ github.ref_name}}-win-x86_64.exe
+      ARTIFACT_NAME: bose-dfu-${{ github.ref_name }}-win-x86_64.exe
     steps:
       - uses: actions/checkout@v2
       - name: Build
@@ -54,7 +54,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     env:
-      ARTIFACT_NAME: bose-dfu-${{ github.ref_name}}-mac-universal
+      ARTIFACT_NAME: bose-dfu-${{ github.ref_name }}-mac-universal
     steps:
       - uses: actions/checkout@v2
       - name: Add x86_64-apple-darwin target
