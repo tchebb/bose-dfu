@@ -138,6 +138,7 @@ pub fn upload(device: &HidDevice, file: &mut impl Write) -> Result<(), Error> {
 }
 
 /// Pieces of information that Bose's normal firmware exposes.
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum InfoField {
     DeviceModel,
@@ -179,6 +180,8 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
         1,
         "reading info field",
     )?;
+
+    trace!("Raw {:?} info field: {:02x?}", field, response_report);
 
     // Result is all the bytes after the report ID and before the first NUL.
     let result = response_report[1..].split(|&x| x == 0).next().unwrap();
