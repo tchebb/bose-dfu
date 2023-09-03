@@ -13,9 +13,9 @@ edition = "2021"
 exclude = ["/.github", "/test_data"]
 
 [dependencies]
-hidapi = {version = "1.3", default-features = false, features = ["linux-static-hidraw", "illumos-static-libusb"]}
+hidapi = "2.0"
 thiserror = "1.0"
-num_enum = "0.5"
+num_enum = "0.7"
 byteorder = "1.3"
 log = "0.4"
 crc32fast = "1.2"
@@ -23,7 +23,7 @@ crc32fast = "1.2"
 # Only required for binary
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive", "wrap_help"] }
-env_logger = "0.9"
+env_logger = "0.10"
 
 [profile.release]
 strip = "symbols"
