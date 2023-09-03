@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 env:
   CARGO_TERM_COLOR: always
   TEMP_DIR: target/github-temp
