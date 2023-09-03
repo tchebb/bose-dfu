@@ -6,6 +6,8 @@ const BOSE_HID_USAGE_PAGE: u16 = 0xff00;
 const COMPATIBLE_DEVICES: &[DeviceIds] = &[
     // Bose Color II SoundLink
     bose_dev(0x40fe, 0x400d),
+    // Bose SoundLink Mini II
+    bose_dev(0x40fe, 0x4009), // Same normal PID as Color II, not a typo
 ];
 
 // Use UsbId instead of DeviceIds since some incompatible devices don't have a concept of DFU mode.

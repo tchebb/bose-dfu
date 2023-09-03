@@ -25,6 +25,7 @@ Tested devices
 bose-dfu does to your device, even if that device is on the following list:**
 
  - SoundLink Color II (used for initial development)
+ - SoundLink Mini II
 
 It's likely that most Bose devices that take updates in `.dfu` format work with
 this tool, but I can't guarantee that. If your device isn't on the list above
