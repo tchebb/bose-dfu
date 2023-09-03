@@ -2,3 +2,6 @@
 
 # SoundLink Color II, normal and DFU modes respectively
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="40fe|400d", TAG+="uaccess"
+
+# SoundLink Mini II, DFU mode (normal mode shared with Color II)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="4009", TAG+="uaccess"
