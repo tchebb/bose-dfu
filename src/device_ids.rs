@@ -3,11 +3,17 @@ use std::fmt::Display;
 const BOSE_VID: u16 = 0x05a7;
 const BOSE_HID_USAGE_PAGE: u16 = 0xff00;
 
+// TODO: It turns out that many devices share the same normal mode PID, so
+// we should at least tweak the wording that currently lists everything with
+// a PID in this list as a "compatible device". Perhaps add an additional
+// match on product string?
 const COMPATIBLE_DEVICES: &[DeviceIds] = &[
     // Bose Color II SoundLink
     bose_dev(0x40fe, 0x400d),
     // Bose SoundLink Mini II
-    bose_dev(0x40fe, 0x4009), // Same normal PID as Color II, not a typo
+    bose_dev(0x40fe, 0x4009),
+    // Bose QC35 II
+    bose_dev(0x40fe, 0x4020),
 ];
 
 // Use UsbId instead of DeviceIds since some incompatible devices don't have a concept of DFU mode.
