@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
@@ -6,7 +6,7 @@ use std::io::Read;
 use std::path::Path;
 use thiserror::Error;
 
-use bose_dfu::device_ids::{identify_device, DeviceCompat, DeviceMode, UsbId};
+use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
 use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
 
@@ -268,7 +268,9 @@ impl DeviceSpec {
                 }
 
                 if risks.untested {
-                    warn!("Device has not been tested with bose-dfu; by proceeding, you risk damaging it");
+                    warn!(
+                        "Device has not been tested with bose-dfu; by proceeding, you risk damaging it"
+                    );
                 }
 
                 if risks.ambiguous_mode {

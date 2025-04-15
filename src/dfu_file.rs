@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, BE};
+use byteorder::{BE, ByteOrder};
 use log::warn;
 use std::fmt::{Display, LowerHex, Write};
 use std::io::{Read, Seek, SeekFrom};
@@ -49,7 +49,7 @@ pub fn parse(file: &mut (impl Read + Seek)) -> Result<SuffixInfo, Error> {
                 suffix_len,
                 file_len,
             }
-            .into())
+            .into());
         }
     };
 

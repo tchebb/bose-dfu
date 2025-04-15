@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt, LE};
+use byteorder::{ByteOrder, LE, ReadBytesExt, WriteBytesExt};
 use hidapi::{HidDevice, HidError};
 use log::{info, trace};
 use num_enum::TryFromPrimitive;
@@ -69,8 +69,7 @@ pub fn download(device: &HidDevice, file: &mut impl Read) -> Result<(), Error> {
 
         trace!(
             "Successfully downloaded block {:#06x} ({} bytes)",
-            block_num,
-            data_size
+            block_num, data_size
         );
 
         if data_size == 0 {
@@ -319,8 +318,12 @@ impl DfuStatus {
             errPROG => "Program memory function failed.",
             errVERIFY => "Programmed memory failed verification.",
             errADDRESS => "Cannot program memory due to received address that is out of range.",
-            errNOTDONE => "Received DFU_DNLOAD with wLength = 0, but device does not think it has all of the data yet.",
-            errFIRMWARE => "Device's firmware is corrupt. It cannot return to run-time (non-DFU) operations.",
+            errNOTDONE => {
+                "Received DFU_DNLOAD with wLength = 0, but device does not think it has all of the data yet."
+            }
+            errFIRMWARE => {
+                "Device's firmware is corrupt. It cannot return to run-time (non-DFU) operations."
+            }
             errVENDOR => "iString indicates a vendor-specific error.",
             errUSBR => "Device detected unexpected USB reset signaling.",
             errPOR => "Device detected unexpected power on reset.",
