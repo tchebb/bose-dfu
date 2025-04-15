@@ -1,13 +1,14 @@
 use anyhow::{bail, Context, Result};
-use bose_dfu::device_ids::{identify_device, DeviceCompat, DeviceMode, UsbId};
-use bose_dfu::dfu_file::parse as parse_dfu_file;
-use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
 use clap::Parser;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
 use std::io::Read;
 use std::path::Path;
 use thiserror::Error;
+
+use bose_dfu::device_ids::{identify_device, DeviceCompat, DeviceMode, UsbId};
+use bose_dfu::dfu_file::parse as parse_dfu_file;
+use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
