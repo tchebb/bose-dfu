@@ -478,7 +478,7 @@ pub enum ProtocolError {
     #[error("device reported status ({0}) that is not in the DFU spec")]
     UnknownStatus(u8),
 
-    #[error("device reported an error: {0:?} ({})", .0.error_str())]
+    #[error("device reported an error: {0:?} ({err})", err = .0.error_str())]
     ErrorStatus(DfuStatus),
 
     #[error("device entered unexpected state: expected {expected:?}, got {actual:?}")]
