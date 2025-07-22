@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
-use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
+use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_commands};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -18,6 +18,12 @@ enum Opt {
 
     /// Get information about a specific device not in DFU mode
     Info {
+        #[command(flatten)]
+        spec: DeviceSpec,
+    },
+
+    /// Run TAP commands on a specific device not in DFU mode
+    Tap {
         #[command(flatten)]
         spec: DeviceSpec,
     },
@@ -102,6 +108,13 @@ fn main() -> Result<()> {
                 "Current firmware: {}",
                 read_info_field(&dev, CurrentFirmware)?
             );
+        }
+        Opt::Tap { spec } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Normal),
+                ..spec
+            };
+            run_tap_commands(&spec.get_device(&api)?.0)?;
         }
         Opt::EnterDfu { spec } => {
             let spec = DeviceSpec {

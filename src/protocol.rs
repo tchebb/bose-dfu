@@ -184,6 +184,59 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
         .to_owned())
 }
 
+pub fn run_tap_commands(device: &HidDevice) -> Result<(), Error> {
+    const TAP_REPORT_ID: u8 = 2;
+    const TAP_REPORT_LEN: usize = 2048;
+
+    loop {
+        print!("> ");
+        std::io::stdout().flush().unwrap();
+        let mut tap_command = String::new();
+        std::io::stdin()
+            .read_line(&mut tap_command)
+            .expect("Failed to read line");
+
+        tap_command = tap_command.trim().to_string();
+        if tap_command.len() == 0 {
+            continue;
+        } else if tap_command == "." {
+            break;
+        }
+        let tap_bytes = tap_command.as_bytes();
+
+        // 1 byte report ID + 2 bytes field ID + 1 byte NUL
+        let mut request_report = vec![0u8; 1 + tap_bytes.len() + 1].into_boxed_slice();
+
+        // Packet captures indicate that "lc" is also a valid field type for some devices, but on mine
+        // it always returns a bus error (both when I send it and when the official updater does).
+        request_report[0] = TAP_REPORT_ID;
+        request_report[1..tap_bytes.len()+1].copy_from_slice(tap_bytes);
+
+        device
+            .send_feature_report(&request_report)
+            .map_err(|e| Error::DeviceIoError {
+                source: e,
+                action: "running TAP command",
+            })?;
+
+        let mut response_report = [0u8; 1 + TAP_REPORT_LEN];
+        response_report[0] = TAP_REPORT_ID;
+        map_gfr(
+            device.get_feature_report(&mut response_report),
+            1,
+            "reading TAP command response",
+        )?;
+
+        trace!("Raw {:?} TAP command response: {:02x?}", tap_command, response_report);
+
+        // Result is all the bytes after the report ID and before the first NUL.
+        let result = response_report[1..].split(|&x| x == 0).next().unwrap();
+        println!("{:?}", std::str::from_utf8(result));
+    }
+
+    Ok(())
+}
+
 /// Put a device running the normal firmware into DFU mode. `device` must NOT be in DFU mode.
 pub fn enter_dfu(device: &HidDevice) -> Result<(), Error> {
     const ENTER_DFU_REPORT_ID: u8 = 1;
