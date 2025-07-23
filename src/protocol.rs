@@ -210,7 +210,7 @@ pub fn run_tap_commands(device: &HidDevice) -> Result<(), Error> {
         // Packet captures indicate that "lc" is also a valid field type for some devices, but on mine
         // it always returns a bus error (both when I send it and when the official updater does).
         request_report[0] = TAP_REPORT_ID;
-        request_report[1..tap_bytes.len()+1].copy_from_slice(tap_bytes);
+        request_report[1..tap_bytes.len() + 1].copy_from_slice(tap_bytes);
 
         device
             .send_feature_report(&request_report)
@@ -227,7 +227,10 @@ pub fn run_tap_commands(device: &HidDevice) -> Result<(), Error> {
             "reading TAP command response",
         )?;
 
-        trace!("Raw {:?} TAP command response: {:02x?}", tap_command, response_report);
+        trace!(
+            "Raw {:?} TAP command response: {:02x?}",
+            tap_command, response_report
+        );
 
         // Result is all the bytes after the report ID and before the first NUL.
         let result = response_report[1..].split(|&x| x == 0).next().unwrap();

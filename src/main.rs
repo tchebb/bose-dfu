@@ -8,7 +8,9 @@ use thiserror::Error;
 
 use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
-use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_commands};
+use bose_dfu::protocol::{
+    download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_commands,
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
