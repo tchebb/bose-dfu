@@ -82,8 +82,8 @@ pub enum DeviceCompat {
 impl Display for DeviceCompat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            DeviceCompat::Compatible(mode) => write!(f, "compatible device in {} mode", mode),
-            DeviceCompat::Untested(mode) => write!(f, "UNTESTED device in {} mode", mode),
+            DeviceCompat::Compatible(mode) => write!(f, "compatible device in {mode} mode"),
+            DeviceCompat::Untested(mode) => write!(f, "UNTESTED device in {mode} mode"),
             DeviceCompat::Incompatible => write!(f, "incompatible device"),
         }
     }

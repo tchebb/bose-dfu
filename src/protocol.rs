@@ -55,10 +55,7 @@ pub fn download(device: &HidDevice, file: &mut impl Read) -> Result<(), Error> {
         // official updater seems to completely ignore those values and instead just rely on the
         // device to bake the necessary delay into its GET_STATUS response latency. We do the same.
         if data_size == 0 {
-            info!(
-                "Waiting {:?}, as requested by device, for firmware to manifest",
-                prev_delay
-            );
+            info!("Waiting {prev_delay:?}, as requested by device, for firmware to manifest");
             sleep(prev_delay);
         }
 
@@ -67,10 +64,7 @@ pub fn download(device: &HidDevice, file: &mut impl Read) -> Result<(), Error> {
 
         prev_delay = Duration::from_millis(status.poll_timeout as _);
 
-        trace!(
-            "Successfully downloaded block {:#06x} ({} bytes)",
-            block_num, data_size
-        );
+        trace!("Successfully downloaded block {block_num:#06x} ({data_size} bytes)");
 
         if data_size == 0 {
             // Empty read means we're done, device should now be idle.
@@ -120,7 +114,7 @@ pub fn upload(device: &HidDevice, file: &mut impl Write) -> Result<(), Error> {
             .into());
         }
 
-        trace!("Successfully uploaded block ({} bytes)", data_size);
+        trace!("Successfully uploaded block ({data_size} bytes)");
 
         file.write_all(&report[data_start..data_start + data_size])?;
 
@@ -180,7 +174,7 @@ pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, E
         "reading info field",
     )?;
 
-    trace!("Raw {:?} info field: {:02x?}", field, response_report);
+    trace!("Raw {field:?} info field: {response_report:02x?}");
 
     // Result is all the bytes after the report ID and before the first NUL.
     let result = response_report[1..].split(|&x| x == 0).next().unwrap();
