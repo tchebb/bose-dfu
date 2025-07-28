@@ -2,14 +2,17 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
+use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
+use std::env;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
 use bose_dfu::protocol::{
-    download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_commands,
+    download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_command,
 };
 
 #[derive(Parser, Debug)]
@@ -116,7 +119,7 @@ fn main() -> Result<()> {
                 required_mode: Some(DeviceMode::Normal),
                 ..spec
             };
-            run_tap_commands(&spec.get_device(&api)?.0)?;
+            tap_command_loop(&spec.get_device(&api)?.0)?;
         }
         Opt::EnterDfu { spec } => {
             let spec = DeviceSpec {
@@ -188,6 +191,53 @@ fn list_cmd(hidapi: &HidApi) {
             state,
         );
     }
+}
+
+pub fn tap_command_loop(device: &HidDevice) -> Result<()> {
+    const HISTORY_NAME: &str = ".bose-dfu_history";
+
+    let mut rl = DefaultEditor::new()?;
+    let history_file = match env::home_dir() {
+        Some(home_path) => home_path.join(HISTORY_NAME),
+        None => PathBuf::from(HISTORY_NAME),
+    };
+    if rl.load_history(&history_file).is_err() {
+        println!("No previous history.");
+    }
+
+    loop {
+        let readline = rl.readline("> ");
+        match readline {
+            Ok(line) => {
+                if line.is_empty() {
+                    continue;
+                } else if line == "." {
+                    break;
+                }
+
+                let result = run_tap_command(device, line.as_bytes());
+                println!("{result:?}");
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {err:?}");
+                break;
+            }
+        }
+    }
+
+    if rl.save_history(&history_file).is_err() {
+        println!("Cant save history.")
+    }
+
+    Ok(())
 }
 
 fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path, wildcard_fw: bool) -> Result<()> {

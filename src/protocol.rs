@@ -139,105 +139,64 @@ pub enum InfoField {
     CurrentFirmware,
 }
 
-/// Read an information field (as listed in [InfoField]) from the normal firmware. `device` must
-/// NOT be in DFU mode.
-pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, Error> {
-    const INFO_REPORT_ID: u8 = 2;
-    const INFO_REPORT_LEN: usize = 126;
-
-    use InfoField::*;
+// Run a "TAP command" on the device. This is the general way to communicate with Bose DFU devices
+// 'device' must NOT be in DFU mode.
+pub fn run_tap_command(device: &HidDevice, tap_bytes: &[u8]) -> Result<String, Error> {
+    const TAP_REPORT_ID: u8 = 2;
+    const TAP_REPORT_LEN: usize = 126;
 
     // 1 byte report ID + 2 bytes field ID + 1 byte NUL
-    let mut request_report = [0u8; 1 + 2 + 1];
+    let mut request_report = vec![0u8; 1 + tap_bytes.len() + 1].into_boxed_slice();
 
-    // Packet captures indicate that "lc" is also a valid field type for some devices, but on mine
-    // it always returns a bus error (both when I send it and when the official updater does).
-    request_report[0] = INFO_REPORT_ID;
-    request_report[1..3].copy_from_slice(match field {
-        DeviceModel => b"pl",
-        SerialNumber => b"sn",
-        CurrentFirmware => b"vr",
-    });
+    request_report[0] = TAP_REPORT_ID;
+    request_report[1..tap_bytes.len() + 1].copy_from_slice(tap_bytes);
 
     device
         .send_feature_report(&request_report)
         .map_err(|e| Error::DeviceIoError {
             source: e,
-            action: "requesting info field",
+            action: "running TAP command",
         })?;
 
-    let mut response_report = [0u8; 1 + INFO_REPORT_LEN];
-    response_report[0] = INFO_REPORT_ID;
+    let mut response_report = [0u8; 1 + TAP_REPORT_LEN];
+    response_report[0] = TAP_REPORT_ID;
     map_gfr(
         device.get_feature_report(&mut response_report),
         1,
-        "reading info field",
+        "reading TAP command response",
     )?;
 
-    trace!("Raw {field:?} info field: {response_report:02x?}");
+    trace!(
+        "Raw {:?} TAP command response: {response_report:02x?}",
+        std::str::from_utf8(tap_bytes)
+    );
 
     // Result is all the bytes after the report ID and before the first NUL.
-    let result = response_report[1..].split(|&x| x == 0).next().unwrap();
+    let result = match response_report[0] {
+        TAP_REPORT_ID => response_report[1..].split(|&x| x == 0).next().unwrap(),
+        _ => response_report.split(|&x| x == 0).next().unwrap(),
+    };
 
     Ok(std::str::from_utf8(result)
         .map_err(|e| Error::ProtocolError(e.into()))?
         .to_owned())
 }
 
-pub fn run_tap_commands(device: &HidDevice) -> Result<(), Error> {
-    const TAP_REPORT_ID: u8 = 2;
-    const TAP_REPORT_LEN: usize = 2048;
+/// Read an information field (as listed in [InfoField]) from the normal firmware. `device` must
+/// NOT be in DFU mode.
+pub fn read_info_field(device: &HidDevice, field: InfoField) -> Result<String, Error> {
+    use InfoField::*;
 
-    loop {
-        print!("> ");
-        std::io::stdout().flush().unwrap();
-        let mut tap_command = String::new();
-        std::io::stdin()
-            .read_line(&mut tap_command)
-            .expect("Failed to read line");
-
-        tap_command = tap_command.trim().to_string();
-        if tap_command.len() == 0 {
-            continue;
-        } else if tap_command == "." {
-            break;
-        }
-        let tap_bytes = tap_command.as_bytes();
-
-        // 1 byte report ID + 2 bytes field ID + 1 byte NUL
-        let mut request_report = vec![0u8; 1 + tap_bytes.len() + 1].into_boxed_slice();
-
-        // Packet captures indicate that "lc" is also a valid field type for some devices, but on mine
-        // it always returns a bus error (both when I send it and when the official updater does).
-        request_report[0] = TAP_REPORT_ID;
-        request_report[1..tap_bytes.len() + 1].copy_from_slice(tap_bytes);
-
-        device
-            .send_feature_report(&request_report)
-            .map_err(|e| Error::DeviceIoError {
-                source: e,
-                action: "running TAP command",
-            })?;
-
-        let mut response_report = [0u8; 1 + TAP_REPORT_LEN];
-        response_report[0] = TAP_REPORT_ID;
-        map_gfr(
-            device.get_feature_report(&mut response_report),
-            1,
-            "reading TAP command response",
-        )?;
-
-        trace!(
-            "Raw {:?} TAP command response: {:02x?}",
-            tap_command, response_report
-        );
-
-        // Result is all the bytes after the report ID and before the first NUL.
-        let result = response_report[1..].split(|&x| x == 0).next().unwrap();
-        println!("{:?}", std::str::from_utf8(result));
-    }
-
-    Ok(())
+    // Packet captures indicate that "lc" is also a valid field type for some devices, but on mine
+    // it always returns a bus error (both when I send it and when the official updater does).
+    run_tap_command(
+        device,
+        match field {
+            DeviceModel => b"pl",
+            SerialNumber => b"sn",
+            CurrentFirmware => b"vr",
+        },
+    )
 }
 
 /// Put a device running the normal firmware into DFU mode. `device` must NOT be in DFU mode.
