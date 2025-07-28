@@ -4,9 +4,8 @@ use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
 use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
-use std::env;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use thiserror::Error;
 
 use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
@@ -193,17 +192,8 @@ fn list_cmd(hidapi: &HidApi) {
     }
 }
 
-pub fn tap_command_loop(device: &HidDevice) -> Result<()> {
-    const HISTORY_NAME: &str = ".bose-dfu_history";
-
+fn tap_command_loop(device: &HidDevice) -> Result<()> {
     let mut rl = DefaultEditor::new()?;
-    let history_file = match env::home_dir() {
-        Some(home_path) => home_path.join(HISTORY_NAME),
-        None => PathBuf::from(HISTORY_NAME),
-    };
-    if rl.load_history(&history_file).is_err() {
-        println!("No previous history.");
-    }
 
     loop {
         let readline = rl.readline("> ");
@@ -214,6 +204,7 @@ pub fn tap_command_loop(device: &HidDevice) -> Result<()> {
                 } else if line == "." {
                     break;
                 }
+                rl.add_history_entry(line.as_str())?;
 
                 let result = run_tap_command(device, line.as_bytes());
                 println!("{result:?}");
@@ -231,10 +222,6 @@ pub fn tap_command_loop(device: &HidDevice) -> Result<()> {
                 break;
             }
         }
-    }
-
-    if rl.save_history(&history_file).is_err() {
-        println!("Cant save history.")
     }
 
     Ok(())

@@ -145,7 +145,7 @@ pub fn run_tap_command(device: &HidDevice, tap_bytes: &[u8]) -> Result<String, E
     const TAP_REPORT_ID: u8 = 2;
     const TAP_REPORT_LEN: usize = 126;
 
-    // 1 byte report ID + 2 bytes field ID + 1 byte NUL
+    // 1 byte report ID + command length + 1 byte NUL
     let mut request_report = vec![0u8; 1 + tap_bytes.len() + 1].into_boxed_slice();
 
     request_report[0] = TAP_REPORT_ID;
@@ -168,14 +168,10 @@ pub fn run_tap_command(device: &HidDevice, tap_bytes: &[u8]) -> Result<String, E
 
     trace!(
         "Raw {:?} TAP command response: {response_report:02x?}",
-        std::str::from_utf8(tap_bytes)
+        tap_bytes.escape_ascii()
     );
 
-    // Result is all the bytes after the report ID and before the first NUL.
-    let result = match response_report[0] {
-        TAP_REPORT_ID => response_report[1..].split(|&x| x == 0).next().unwrap(),
-        _ => response_report.split(|&x| x == 0).next().unwrap(),
-    };
+    let result = response_report[1..].split(|&x| x == 0).next().unwrap();
 
     Ok(std::str::from_utf8(result)
         .map_err(|e| Error::ProtocolError(e.into()))?

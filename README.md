@@ -129,10 +129,10 @@ download`, and `bose-dfu leave-dfu`, in that order. The other subcommands help
 you inspect the current state of devices and firmware files. Notable is `info`,
 which tells you the current firmware version a device is running.
 
-The `tap` subcommand can be used to start an interactvice shell with the device
+The `tap` subcommand can be used to start an interactive shell with the device
 allowing you to send maintenance commands to the device, useful for servicing
 purposes (like putting the device into shipmode when changing the battery).
-Refer to your products service manual for available commands. To exit the shell
+Refer to your product's service manual for available commands. To exit the shell
 you may use a single `.`, `<CTRL-C>` or `<CTRL-D>`.
 
 Subcommands that perform an operation on a device support arguments for
