@@ -139,8 +139,8 @@ pub enum InfoField {
     CurrentFirmware,
 }
 
-// Run a "TAP command" on the device. This is the general way to communicate with Bose DFU devices
-// 'device' must NOT be in DFU mode.
+/// Run a "TAP command" on the device. This is the general way to communicate with Bose devices.
+/// 'device' must NOT be in DFU mode.
 pub fn run_tap_command(device: &HidDevice, tap_bytes: &[u8]) -> Result<String, Error> {
     const TAP_REPORT_ID: u8 = 2;
     const TAP_REPORT_LEN: usize = 126;
