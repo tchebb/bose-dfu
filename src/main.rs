@@ -2,13 +2,17 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::{info, warn};
+use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 use std::io::Read;
 use std::path::Path;
 use thiserror::Error;
 
 use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
-use bose_dfu::protocol::{download, ensure_idle, enter_dfu, leave_dfu, read_info_field};
+use bose_dfu::protocol::{
+    download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_command,
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -18,6 +22,12 @@ enum Opt {
 
     /// Get information about a specific device not in DFU mode
     Info {
+        #[command(flatten)]
+        spec: DeviceSpec,
+    },
+
+    /// Run TAP commands on a specific device not in DFU mode
+    Tap {
         #[command(flatten)]
         spec: DeviceSpec,
     },
@@ -103,6 +113,13 @@ fn main() -> Result<()> {
                 read_info_field(&dev, CurrentFirmware)?
             );
         }
+        Opt::Tap { spec } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Normal),
+                ..spec
+            };
+            tap_command_loop(&spec.get_device(&api)?.0)?;
+        }
         Opt::EnterDfu { spec } => {
             let spec = DeviceSpec {
                 required_mode: Some(DeviceMode::Normal),
@@ -173,6 +190,41 @@ fn list_cmd(hidapi: &HidApi) {
             state,
         );
     }
+}
+
+fn tap_command_loop(device: &HidDevice) -> Result<()> {
+    let mut rl = DefaultEditor::new()?;
+
+    loop {
+        let readline = rl.readline("> ");
+        match readline {
+            Ok(line) => {
+                if line.is_empty() {
+                    continue;
+                } else if line == "." {
+                    break;
+                }
+                rl.add_history_entry(line.as_str())?;
+
+                let result = run_tap_command(device, line.as_bytes());
+                println!("{result:?}");
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {err:?}");
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn download_cmd(dev: &HidDevice, info: &DeviceInfo, path: &Path, wildcard_fw: bool) -> Result<()> {

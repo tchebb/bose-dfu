@@ -24,6 +24,7 @@ crc32fast = "1.2"
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive", "wrap_help"] }
 env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
+rustyline = { version = "16.0.0", default-features = false }
 
 [profile.release]
 strip = "symbols"
