@@ -11,3 +11,6 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="4009", TAG+="ua
 
 # QuietComfort 35 II, DFU mode
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="4020", TAG+="uaccess"
+
+# Soundwear, DFU mode
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="4017", TAG+="uaccess"
