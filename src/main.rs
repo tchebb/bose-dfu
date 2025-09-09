@@ -289,16 +289,16 @@ impl DeviceSpec {
             _ => return None,
         };
 
-        if let Some(x) = self.pid {
-            if dev_id.pid != x {
-                return None;
-            }
+        if let Some(x) = self.pid
+            && dev_id.pid != x
+        {
+            return None;
         }
 
-        if let Some(ref x) = self.serial {
-            if device.serial_number() != Some(x) {
-                return None;
-            }
+        if let Some(ref x) = self.serial
+            && device.serial_number() != Some(x)
+        {
+            return None;
         }
 
         Some(DeviceRisks {
