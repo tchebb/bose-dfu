@@ -175,11 +175,14 @@ pub fn run_tap_command(device: &HidDevice, tap_bytes: &[u8]) -> Result<String, E
     // so the actual string data starts at index 0. Some devices may prepend a length/status
     // byte before the string, so we check for that.
     let data_start = if response_report[0] < 0x20 || response_report[0] > 0x7E {
-        1  // Skip non-printable length/status byte
+        1 // Skip non-printable length/status byte
     } else {
-        0  // Data starts immediately
+        0 // Data starts immediately
     };
-    let result = response_report[data_start..].split(|&x| x == 0).next().unwrap();
+    let result = response_report[data_start..]
+        .split(|&x| x == 0)
+        .next()
+        .unwrap();
 
     Ok(std::str::from_utf8(result)
         .map_err(|e| Error::ProtocolError(e.into()))?
