@@ -205,9 +205,16 @@ fn tap_command_loop(device: &HidDevice) -> Result<()> {
                     break;
                 }
                 rl.add_history_entry(line.as_str())?;
-
-                let result = run_tap_command(device, line.as_bytes());
-                println!("{result:?}");
+                match run_tap_command(device, line.as_bytes()) {
+                    Ok(response) => {
+                        if response.is_empty() {
+                            println!("(empty response)");
+                        } else {
+                            println!("{}", response);
+                        }
+                    }
+                    Err(e) => println!("Error: {e:?}"),
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
