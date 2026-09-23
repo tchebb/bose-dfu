@@ -11,7 +11,7 @@ use thiserror::Error;
 use bose_dfu::device_ids::{DeviceCompat, DeviceMode, UsbId, identify_device};
 use bose_dfu::dfu_file::parse as parse_dfu_file;
 use bose_dfu::protocol::{
-    download, ensure_idle, enter_dfu, leave_dfu, read_info_field, run_tap_command,
+    download, ensure_idle, enter_dfu, enter_tap, leave_dfu, read_info_field, run_tap_command,
 };
 
 #[derive(Parser, Debug)]
@@ -28,6 +28,12 @@ enum Opt {
 
     /// Run TAP commands on a specific device not in DFU mode
     Tap {
+        #[command(flatten)]
+        spec: DeviceSpec,
+    },
+
+    /// Restart a normal-mode device into the CDC/TAP service interface
+    EnterTap {
         #[command(flatten)]
         spec: DeviceSpec,
     },
@@ -119,6 +125,14 @@ fn main() -> Result<()> {
                 ..spec
             };
             tap_command_loop(&spec.get_device(&api)?.0)?;
+        }
+        Opt::EnterTap { spec } => {
+            let spec = DeviceSpec {
+                required_mode: Some(DeviceMode::Normal),
+                ..spec
+            };
+            enter_tap(&spec.get_device(&api)?.0)?;
+            println!("TAP mode request sent. Device should re-enumerate as a CDC/TAP interface.");
         }
         Opt::EnterDfu { spec } => {
             let spec = DeviceSpec {

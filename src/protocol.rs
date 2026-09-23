@@ -207,6 +207,17 @@ pub fn enter_dfu(device: &HidDevice) -> Result<(), Error> {
         })
 }
 
+/// Ask a device running the normal firmware to restart into TAP/CDC service mode.
+/// `device` must NOT be in DFU mode.
+pub fn enter_tap(device: &HidDevice) -> Result<(), Error> {
+    device
+        .send_feature_report(&[0x01, 0xb0, 0x5e])
+        .map_err(|e| Error::DeviceIoError {
+            source: e,
+            action: "entering TAP mode",
+        })
+}
+
 /// Switch back to the normal firmware. `device` must be in DFU mode.
 pub fn leave_dfu(device: &HidDevice) -> Result<(), Error> {
     device

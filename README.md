@@ -16,6 +16,49 @@ See the next section for a list of devices known to be compatible and the one
 after that for instructions on how to find firmware images for your device
 (which can also help you determine compatibility).
 
+Fork enhancements
+-----------------
+This repository preserves the history, attribution, and MIT license of Tom
+Hebb's original [bose-dfu project](https://github.com/tchebb/bose-dfu). This
+fork adds `enter-tap`; the existing DFU implementation and interactive HID
+`tap` command originated upstream and remain unchanged.
+
+### Why `enter-tap` was added
+
+The work grew out of diagnosing a SoundLink Mini II Special Edition with a red
+battery fault. The existing HID `tap` interface could identify the speaker,
+but on M3 it did not expose the richer `sf`, `vb`, `ba`, and related service
+diagnostics needed to investigate battery and system faults.
+
+**Real diagnostic example:** See [M3 Battery Imbalance Diagnostic](docs/examples/M3-BATTERY-IMBALANCE-DIAGNOSTIC.md) for a complete SoundLink Mini II Special Edition repair case. A red battery fault initially presented as 0 V battery/cell readings, but the recovered CDC/TAP interface preserved the stored fault history and revealed a 590 mV cell imbalance after the documented reset procedure.
+
+Bose repair documentation showed that service workflows entered a separate **TAP Mode**
+through PolyComm or `hidtool.exe`, then used a serial-style TAP console.
+
+
+This fork reconstructed that HID-to-CDC transition and implemented it as:
+
+```
+bose-dfu enter-tap
+```
+
+The existing `tap` command is unchanged: it runs TAP commands interactively
+over the normal HID interface. In contrast, `enter-tap` sends a single service
+mode request and the device restarts, disconnects from HID, and re-enumerates
+as a CDC serial device. TAP commands entered through that serial console may be
+state-changing; consult the applicable service information before using them.
+
+The transition has been hardware-verified on an original SoundLink Mini II
+Cup/KCup-family unit running 1.1.4.3558 and a SoundLink Mini II Special Edition
+(M3) running 1.0.14.6636. Comparative firmware analysis predicted the request,
+Bose service material explained its intended role, a USBPcap/Wireshark capture
+confirmed the exact host transaction, and both speakers confirmed the resulting
+CDC console. See [TAP service mode](docs/TAP-SERVICE-MODE.md) for the evidence
+and protocol details, including the verified Cup/KCup exit procedure; see
+[SoundLink Mini II diagnostics](docs/SOUNDLINK-MINI-II-DIAGNOSTICS.md)
+for a repair-oriented workflow, and the [report-ID-1 analysis](docs/research/hid-report1-tap-analysis.md)
+for the reverse-engineering record.
+
 [hidapi]: https://github.com/libusb/hidapi
 [btu]: https://btu.bose.com/
 
@@ -117,6 +160,7 @@ SUBCOMMANDS:
     list         List all connected Bose HID devices (vendor ID 0x05a7)
     info         Get information about a specific device not in DFU mode
     tap          Run TAP commands on a specific device not in DFU mode
+    enter-tap    Restart a normal-mode device into the CDC/TAP service interface
     enter-dfu    Put a device into DFU mode
     leave-dfu    Take a device out of DFU mode
     download     Write firmware to a device in DFU mode
@@ -134,6 +178,10 @@ allowing you to send maintenance commands to the device, useful for servicing
 purposes (like putting the device into shipmode when changing the battery).
 Refer to your product's service manual for available commands. To exit the shell
 you may use a single `.`, `<CTRL-C>` or `<CTRL-D>`.
+
+The `enter-tap` subcommand is different: it requests a warm restart into the
+CDC/TAP service interface and then exits. It does not wait for the serial port,
+open it, or send a console command. See [TAP service mode](docs/TAP-SERVICE-MODE.md).
 
 Subcommands that perform an operation on a device support arguments for
 selecting which device to talk to.  You can use `-p` to select by USB product
